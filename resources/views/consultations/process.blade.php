@@ -138,7 +138,7 @@
                     <div class="p-4 border border-gray-200 hover:border-gold-500 transition">
                         <div class="flex justify-between items-center">
                             <div>
-                                <div class="font-semibold text-gray-900">#{{ $index + 1 }}: {{ $match['customer_name'] }}</div>
+
                                 <div class="text-sm text-gray-600">Case ID: {{ $match['case_id'] }} | Product: {{ $match['product_name'] }}</div>
                             </div>
                             <div class="text-right">
@@ -154,7 +154,7 @@
         <!-- Detailed Calculation for Best Match -->
         @if($bestMatch)
             <div class="mb-6">
-                <h3 class="font-bold text-gray-900 mb-4">Detailed Calculation (Best Match: {{ $bestMatch['customer_name'] }}):</h3>
+
 
                 <div class="bg-gray-50 border border-gray-200 p-6">
                     <div class="overflow-x-auto">
@@ -253,7 +253,7 @@
                     <div class="p-4 border border-gray-200 hover:border-gold-500 transition">
                         <div class="flex justify-between items-center">
                             <div>
-                                <div class="font-semibold text-gray-900">#{{ $index + 1 }}: {{ $match['customer_name'] }}</div>
+
                                 <div class="text-sm text-gray-600">Case ID: {{ $match['case_id'] }} | Product: {{ $match['product_name'] }}</div>
                             </div>
                             <div class="text-right">
@@ -272,7 +272,7 @@
                 $weightedBest = $weightedTop[0];
             @endphp
             <div class="mb-6">
-                <h3 class="font-bold text-gray-900 mb-4">Weighted Calculation (Best Match: {{ $weightedBest['customer_name'] }}):</h3>
+
 
                 <div class="bg-gray-50 border border-gray-200 p-6">
                     <div class="overflow-x-auto">
@@ -354,12 +354,12 @@
                     <div class="p-4 border border-gray-200 hover:border-gold-500 transition">
                         <div class="flex justify-between items-center">
                             <div>
-                                <div class="font-semibold text-gray-900">#{{ $index + 1 }}: {{ $match['customer_name'] }}</div>
+
                                 <div class="text-sm text-gray-600">Case ID: {{ $match['case_id'] }} | Product: {{ $match['product_name'] }}</div>
                             </div>
                             <div class="text-right">
                                 <div class="text-2xl font-bold text-gold-600">{{ number_format($match['similarity'] * 100, 2) }}%</div>
-                                <div class="text-xs text-gray-500">{{ $match['matching_trees'] }} / {{ $match['total_trees'] }} trees match</div>
+                                <div class="text-xs text-gray-500">{{ $match['matches'] }} / {{ $match['total_trees'] }} trees match</div>
                             </div>
                         </div>
                     </div>
@@ -374,7 +374,7 @@
                 $treeMatches = $rfBest['tree_by_tree_matches'] ?? [];
             @endphp
             <div class="mb-6">
-                <h3 class="font-bold text-gray-900 mb-4">Leaf Node Comparison (Best Match: {{ $rfBest['customer_name'] }}):</h3>
+
 
                 <div class="bg-gray-50 border border-gray-200 p-6">
                     <div class="mb-4 text-sm text-gray-600">
@@ -405,11 +405,11 @@
                     <div class="flex items-center justify-center space-x-6 mb-6">
                         <div class="flex items-center">
                             <div class="w-6 h-6 bg-green-500 rounded mr-2"></div>
-                            <span class="text-sm text-gray-700">Matching Leaf (✓): {{ $rfBest['matching_trees'] }} trees</span>
+                            <span class="text-sm text-gray-700">Matching Leaf (✓): {{ $rfBest['matches'] }} trees</span>
                         </div>
                         <div class="flex items-center">
                             <div class="w-6 h-6 bg-red-500 rounded mr-2"></div>
-                            <span class="text-sm text-gray-700">Different Leaf (✗): {{ $rfBest['total_trees'] - $rfBest['matching_trees'] }} trees</span>
+                            <span class="text-sm text-gray-700">Different Leaf (✗): {{ $rfBest['total_trees'] - $rfBest['matches'] }} trees</span>
                         </div>
                     </div>
 
@@ -449,7 +449,7 @@
                         <div class="font-mono">
                             <div class="text-xl mb-4">Proximity Calculation:</div>
                             <div class="text-3xl mb-2">
-                                Proximity = <span class="text-gold-500">{{ $rfBest['matching_trees'] }}</span> / {{ $rfBest['total_trees'] }}
+                                Proximity = <span class="text-gold-500">{{ $rfBest['matches'] }}</span> / {{ $rfBest['total_trees'] }}
                             </div>
                             <div class="text-5xl font-bold text-gold-500">
                                 = {{ number_format($rfBest['similarity'], 4) }}
@@ -471,6 +471,178 @@
             </div>
         </div>
     </div>
+
+    <!-- Step 4.5: Decision Tree Visualizations -->
+<div class="bg-white border border-gray-200 p-8 mb-6">
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center">
+            <div class="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center font-bold text-xl mr-4">🌳</div>
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900">Decision Tree Visualizations</h2>
+                <p class="text-gray-600">See the actual tree structure and decision paths</p>
+            </div>
+        </div>
+
+        <button
+            onclick="generateTrees()"
+            id="generateTreeBtn"
+            class="gold-gradient text-black px-6 py-3 hover:opacity-90 transition font-semibold"
+        >
+            Generate Tree Visualizations
+        </button>
+    </div>
+
+    <!-- Loading State -->
+    <div id="treeLoading" class="hidden text-center py-12">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+        <p class="mt-4 text-gray-600">Generating tree visualizations... This may take 10-20 seconds.</p>
+    </div>
+
+    <!-- Trees Container -->
+    <div id="treesContainer" class="hidden">
+        <!-- Trees will be loaded here -->
+    </div>
+
+    <!-- Info Box -->
+    <div class="bg-gray-50 border border-gray-200 p-6">
+        <h3 class="font-bold text-gray-900 mb-3">Understanding Decision Trees:</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+            <li><strong>Root Node (Top):</strong> The first decision point based on the most important feature</li>
+            <li><strong>Internal Nodes:</strong> Decision points that split the data based on feature thresholds</li>
+            <li><strong>Branches:</strong> Represent "yes/no" or "true/false" decisions (≤ threshold or > threshold)</li>
+            <li><strong>Leaf Nodes (Bottom):</strong> Final predictions where the case ends up</li>
+            <li><strong>Path:</strong> The highlighted route your case takes from root to leaf</li>
+        </ul>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+let treesGenerated = false;
+
+async function generateTrees() {
+    if (treesGenerated) {
+        alert('Trees already generated. Refresh the page to regenerate.');
+        return;
+    }
+
+    const btn = document.getElementById('generateTreeBtn');
+    const loading = document.getElementById('treeLoading');
+    const container = document.getElementById('treesContainer');
+
+    // Show loading
+    btn.disabled = true;
+    btn.classList.add('opacity-50');
+    loading.classList.remove('hidden');
+    container.classList.add('hidden');
+
+    try {
+        const response = await fetch('{{ route("consultations.generate-trees", $consultation->id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to generate trees');
+        }
+
+        // Display trees
+        displayTrees(data.trees);
+        treesGenerated = true;
+
+    } catch (error) {
+        alert('Error generating trees: ' + error.message);
+        btn.disabled = false;
+        btn.classList.remove('opacity-50');
+    } finally {
+        loading.classList.add('hidden');
+    }
+}
+
+function displayTrees(trees) {
+    const container = document.getElementById('treesContainer');
+    container.innerHTML = '';
+
+    trees.forEach((tree, index) => {
+        const treeSection = document.createElement('div');
+        treeSection.className = 'mb-8 border-b border-gray-200 pb-8';
+
+        let pathRulesHtml = '';
+        if (tree.path_rules && tree.path_rules.length > 0) {
+            pathRulesHtml = `
+                <div class="mb-6">
+                    <h4 class="font-bold text-gray-900 mb-3">Decision Path for This Case:</h4>
+                    <div class="bg-gold-50 border-l-4 border-gold-500 p-6">
+                        <div class="space-y-3">
+                            ${tree.path_rules.map((rule, idx) => `
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-8 h-8 bg-gold-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                                        ${idx + 1}
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="font-mono text-sm bg-white px-4 py-2 border border-gold-300 rounded">
+                                            ${rule.rule}
+                                        </div>
+                                    </div>
+                                    <div class="text-2xl">${idx < tree.path_rules.length - 1 ? '↓' : '✓'}</div>
+                                </div>
+                            `).join('')}
+                            <div class="mt-4 p-4 bg-green-100 border border-green-500 rounded">
+                                <div class="font-semibold text-green-900">
+                                    Final Leaf Node: <span class="font-mono">#${tree.leaf_node}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        treeSection.innerHTML = `
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xl font-bold text-gray-900">Tree #${tree.tree_number}</h3>
+                    <div class="text-sm text-gray-600">
+                        Depth: ${tree.max_depth} | Total Nodes: ${tree.total_nodes}
+                    </div>
+                </div>
+
+                ${pathRulesHtml}
+
+                <div class="bg-gray-50 border border-gray-200 p-4">
+                    <h4 class="font-bold text-gray-900 mb-3">Tree Structure:</h4>
+                    <div class="overflow-x-auto">
+                        <img
+                            src="/tree_visualizations/${tree.image_filename}"
+                            alt="Decision Tree ${tree.tree_number}"
+                            class="w-full h-auto border border-gray-300"
+                        />
+                    </div>
+                </div>
+
+                ${tree.tree_text ? `
+                    <div class="mt-4">
+                        <details class="bg-gray-50 border border-gray-200 p-4">
+                            <summary class="font-bold text-gray-900 cursor-pointer">View Text Representation</summary>
+                            <pre class="mt-4 text-xs overflow-x-auto bg-black text-green-400 p-4 rounded font-mono">${tree.tree_text}</pre>
+                        </details>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+
+        container.appendChild(treeSection);
+    });
+
+    container.classList.remove('hidden');
+}
+</script>
+@endpush
 
     <!-- Step 5: Final Aggregation -->
     <div class="bg-black text-white p-8">

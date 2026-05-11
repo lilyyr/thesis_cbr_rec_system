@@ -308,4 +308,59 @@ Log::info('CBR Input prepared', ['data' => $cbrInput]);
             ];
         }
     }
+
+    /**
+ * Generate tree visualizations for a case
+ */
+public function generateTreeVisualizations($id)
+{
+    /** @var User $currentUser */
+    $currentUser = Auth::user();
+
+    $consultation = CaseModel::findOrFail($id);
+
+    // Check permissions
+    if ($currentUser->isAgent() && $consultation->agent_id !== Auth::id()) {
+        abort(403);
+    }
+
+    try {
+        // Build command
+        $pythonPath = env('PYTHON_PATH', 'python');
+        $scriptPath = base_path('python/visualize_trees.py');
+
+        $command = sprintf(
+            '%s %s %d 3 2>&1',
+            $pythonPath,
+            escapeshellarg($scriptPath),
+            $id
+        );
+
+        // Execute
+        exec($command, $output, $returnCode);
+
+        // Parse output
+        $result = json_decode(implode("\n", $output), true);
+
+        if (!$result || !$result['success']) {
+            throw new \Exception($result['error'] ?? 'Failed to generate tree visualizations');
+        }
+
+        // Store tree info in session for display
+        session(['tree_visualizations_' . $id => $result['trees']]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tree visualizations generated successfully',
+            'trees' => $result['trees']
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Tree visualization error: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 }

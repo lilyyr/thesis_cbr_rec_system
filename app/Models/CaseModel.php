@@ -39,6 +39,7 @@ class CaseModel extends Model
         'euclidean_score',
         'weighted_euclidean_score',
         'random_forest_score',
+        'algorithm_details',
     ];
 
     protected $casts = [
