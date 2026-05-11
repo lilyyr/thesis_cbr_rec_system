@@ -58,6 +58,7 @@ Route::middleware(['auth', 'role:admin,agent'])->group(function () {
     Route::get('/consultations/create', [ConsultationController::class, 'create'])->name('consultations.create');
     Route::post('/consultations', [ConsultationController::class, 'store'])->name('consultations.store');
     Route::get('/consultations/{id}', [ConsultationController::class, 'show'])->name('consultations.show');
+    Route::get('/consultations/{id}/process', [ConsultationController::class, 'process'])->name('consultations.process');
 
     // Client management
     Route::resource('clients', ClientController::class);

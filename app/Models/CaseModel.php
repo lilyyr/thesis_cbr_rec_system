@@ -38,7 +38,7 @@ class CaseModel extends Model
         'feature_vector',
         'euclidean_score',
         'weighted_euclidean_score',
-        'random_forest_score'
+        'random_forest_score',
     ];
 
     protected $casts = [
@@ -63,6 +63,7 @@ class CaseModel extends Model
         'euclidean_score' => 'decimal:6',
         'weighted_euclidean_score' => 'decimal:6',
         'random_forest_score' => 'decimal:6',
+        'algorithm_details' => 'array',
     ];
 
     // Relationships

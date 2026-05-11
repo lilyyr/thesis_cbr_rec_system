@@ -13,12 +13,8 @@ import mysql.connector
 from typing import List, Dict, Tuple
 import os
 
-# ============================================
 # DATABASE CONNECTION
-# ============================================
-
 def connect_db():
-    """Connect to MySQL database"""
     return mysql.connector.connect(
         host='localhost',
         user='root',
@@ -26,34 +22,7 @@ def connect_db():
         database='rec_ins_cbr'
     )
 
-def load_historical_cases() -> List[Dict]:
-    """Load all historical cases from database"""
-    conn = connect_db()
-    cursor = conn.cursor(dictionary=True)
-
-    cursor.execute("""
-        SELECT
-            c.id as case_id,
-            c.product_id,
-            c.feature_vector,
-            p.name as product_name
-        FROM cases c
-        JOIN products p ON c.product_id = p.id
-    """)
-
-    cases = cursor.fetchall()
-    conn.close()
-
-    # Parse JSON feature vectors
-    for case in cases:
-        case['feature_vector'] = json.loads(case['feature_vector'])
-
-    return cases
-
-# ============================================
 # DATA PREPROCESSING
-# ============================================
-
 def calculate_age(dob: str) -> int:
     """Calculate age from date of birth"""
     birth_year = int(dob.split('-')[0])
@@ -163,64 +132,107 @@ def preprocess_case(data: Dict) -> Dict:
         }
     }
 
-# ============================================
 # SIMILARITY ALGORITHMS
-# ============================================
-
-def euclidean_distance(new_case: List[float], historical: List[Dict], k: int = 5) -> List[Dict]:
-    """Calculate Euclidean Distance similarity"""
+def euclidean_distance(new_case: List[float], historical_cases: List[float], case_info, k: int = 5) -> List[Dict]:
+    similarities = []
     results = []
-    new_array = np.array(new_case)
 
-    for hist in historical:
-        hist_array = np.array(hist['feature_vector'])
-        distance = np.sqrt(np.sum((new_array - hist_array) ** 2))
+    for i, hist_case in enumerate(historical_cases):
+        # Calculate squared differences for each feature
+        diff_squared = [(new_case[j] - hist_case[j]) ** 2 for j in range(len(new_case))]
+        sum_squared = sum(diff_squared)
+        distance = np.sqrt(sum_squared)
         similarity = 1 / (1 + distance)
 
-        results.append({
-            'case_id': hist['case_id'],
-            'product_id': hist['product_id'],
-            'product_name': hist['product_name'],
+        similarities.append({
+            'case_id': case_info[i]['id'],
+            'product_id': case_info[i]['product_id'],
+            'product_name': case_info[i]['product_name'],
             'similarity': float(similarity),
-            'distance': float(distance)
+            'distance': float(distance),
+            'sum_squared_diff': float(sum_squared),
+            'feature_differences': [float(d) for d in diff_squared],
+            'historical_vector': case_info[i]['feature_vector']
         })
 
-    results.sort(key=lambda x: x['similarity'], reverse=True)
+    similarities.sort(key=lambda x: x['similarity'], reverse=True)
+
+    results = []
+    for case in similarities:
+        product_id = case['product_id']
+        if product_id not in [r['product_id'] for r in results]:
+            results.append(case)
+
     return results[:k]
 
-def weighted_euclidean(new_case: List[float], historical: List[Dict], k: int = 5) -> List[Dict]:
-    """Calculate Weighted Euclidean Distance similarity"""
+    # new_array = np.array(new_case)
+
+    # for hist in historical:
+    #     hist_array = np.array(hist)
+    #     distance = np.sqrt(np.sum((new_array - hist_array) ** 2))
+    #     similarity = 1 / (1 + distance)
+
+    #     results.append({
+    #         'case_id': hist['case_id'],
+    #         'product_id': hist['product_id'],
+    #         'product_name': hist['product_name'],
+    #         'similarity': float(similarity),
+    #         'distance': float(distance)
+    #     })
+
+def weighted_euclidean(new_case: List[float], historical_cases: List[float], case_info, k: int = 5) -> List[Dict]:
     # Load weights
     conn = connect_db()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT weight FROM weights ORDER BY id")
+    cursor.execute("SELECT feature_name, weight FROM weights ORDER BY id")
     weight_rows = cursor.fetchall()
     conn.close()
 
     weights = np.array([float(row['weight']) for row in weight_rows])
 
-    results = []
-    new_array = np.array(new_case)
+    weight_details = [
+        {
+        'feature': row['feature_name'],
+        'weight': float(row['weight'])
+        }
+        for row in weight_rows
+    ]
 
-    for hist in historical:
-        hist_array = np.array(hist['feature_vector'])
-        distance = np.sqrt(np.sum(weights * (new_array - hist_array) ** 2))
+    similarities = []
+
+    for i, hist_case in enumerate(historical_cases):
+        # Calculate weighted squared differences
+        diff = new_case - hist_case
+        weighted_diff_squared = weights * (diff ** 2)
+        sum_weighted_squared = np.sum(weighted_diff_squared)
+        distance = np.sqrt(sum_weighted_squared)
         similarity = 1 / (1 + distance)
 
-        results.append({
-            'case_id': hist['case_id'],
-            'product_id': hist['product_id'],
-            'product_name': hist['product_name'],
+        similarities.append({
+            'case_id': case_info[i]['id'],
+            'product_id': case_info[i]['product_id'],
+            'product_name': case_info[i]['product_name'],
             'similarity': float(similarity),
-            'distance': float(distance)
-        })
+            'distance': float(distance),
+            'sum_weighted_squared': float(sum_weighted_squared),
+            'weighted_differences': [float(d) for d in weighted_diff_squared],
+            'historical_vector': case_info[i]['feature_vector'],
+            'weights_used': weight_details
+    })
 
-    results.sort(key=lambda x: x['similarity'], reverse=True)
+    similarities.sort(key=lambda x: x['similarity'], reverse=True)
+
+    results = []
+    for case in similarities:
+        product_id = case['product_id']
+        if product_id not in [r['product_id'] for r in results]:
+            results.append(case)
+
+    cursor.close()
     return results[:k]
 
-def random_forest_proximity(new_case: List[float], historical: List[Dict], k: int = 5) -> List[Dict]:
-    """Calculate Random Forest Proximity"""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+def random_forest_proximity(new_case: List[float], historical_cases: List[float], case_info, k: int = 5) -> List[Dict]:
+    script_dir = os.path.dirname(__file__)
     model_path = os.path.join(script_dir, 'models', 'rf_model.pkl')
     cache_path = os.path.join(script_dir, 'models', 'leaf_cache.json')
 
@@ -233,9 +245,12 @@ def random_forest_proximity(new_case: List[float], historical: List[Dict], k: in
     with open(cache_path, 'r') as f:
         leaf_cache = json.load(f)
 
-    # Get new case leaves
-    new_case_array = np.array([new_case])
-    new_leaves = rf_model.apply(new_case_array)[0]
+    # # Get new case leaves
+    # new_case_array = np.array([new_case])
+    # new_leaves = rf_model.apply(new_case_array)[0]
+
+    # Get leaf nodes for new case
+    new_leaves = rf_model.apply(new_case.reshape(1, -1))[0]
 
     # NOW IT'S A DICTIONARY!
     leaf_assignments_dict = leaf_cache['leaf_assignments']
@@ -244,40 +259,54 @@ def random_forest_proximity(new_case: List[float], historical: List[Dict], k: in
     # historical_leaves = np.array(leaf_cache['leaf_assignments'])
     # n_trees = rf_model.n_estimators
 
-    results = []
+    similarities = []
 
-    # for i, hist in enumerate(historical):
-    #     hist_leaves = historical_leaves[i]
-    #     matches = np.sum(new_leaves == hist_leaves)
-    #     proximity = matches / n_trees
-
-    for hist in historical:  # No enumerate needed!
-        case_id_str = str(hist['case_id'])
+    for i, hist in enumerate(historical_cases):  # No enumerate needed!
+        case_id_str = str(case_info[i]['id'])
 
         # Check if this case is in the cache
-        if case_id_str not in leaf_assignments_dict:
-            continue  # Skip cases not in training set
+        if case_id_str in leaf_assignments_dict:
+            hist_leaves = np.array(leaf_assignments_dict[case_id_str])
+        else:
+            hist_leaves = rf_model.apply(hist.reshape(1, -1))[0]
 
-        hist_leaves = np.array(leaf_assignments_dict[case_id_str])
         matches = np.sum(new_leaves == hist_leaves)
         proximity = matches / n_trees
 
-        results.append({
-            'case_id': hist['case_id'],
-            'product_id': hist['product_id'],
-            'product_name': hist['product_name'],
+
+        tree_matches = [
+            {
+                'tree_id': j + 1,
+                'new_leaf': int(new_leaves[j]),
+                'hist_leaf': int(hist_leaves[j]),
+                'match': bool(new_leaves[j] == hist_leaves[j])
+            }
+            for j in range(len(new_leaves[:10]))
+        ]
+
+        similarities.append({
+            'case_id': case_info[i]['id'],
+            'product_id': case_info[i]['product_id'],
+            'product_name': case_info[i]['product_name'],
             'similarity': float(proximity),
             'matches': int(matches),
-            'total_trees': n_trees
+            'total_trees': n_trees,
+            'new_case_leaves': [int(l) for l in new_leaves[:10]],
+            'historical_case_leaves': [int(l) for l in hist_leaves[:10]],
+            'tree_by_tree_matches': tree_matches
         })
 
-    results.sort(key=lambda x: x['similarity'], reverse=True)
+    similarities.sort(key=lambda x: x['similarity'], reverse=True)
+
+    results = []
+    for case in similarities:
+        product_id = case['product_id']
+        if product_id not in [r['product_id'] for r in results]:
+            results.append(case)
+
     return results[:k]
 
-# ============================================
 # RESULT AGGREGATION
-# ============================================
-
 def aggregate_results(euclidean: List[Dict], weighted: List[Dict], rf: List[Dict]) -> List[Dict]:
     """Aggregate results from all three algorithms"""
     product_scores = {}
@@ -327,12 +356,6 @@ def aggregate_results(euclidean: List[Dict], weighted: List[Dict], rf: List[Dict
         weighted_avg = np.mean(scores['weighted_scores']) if scores['weighted_scores'] else 0
         rf_avg = np.mean(scores['rf_scores']) if scores['rf_scores'] else 0
 
-        methods_used = sum([
-            len(scores['euclidean_scores']) > 0,
-            len(scores['weighted_scores']) > 0,
-            len(scores['rf_scores']) > 0
-        ])
-
         total = euc_avg + weighted_avg + rf_avg
         aggregate = total / 3
 
@@ -343,8 +366,7 @@ def aggregate_results(euclidean: List[Dict], weighted: List[Dict], rf: List[Dict
             'weighted_euclidean_score': float(weighted_avg),
             'random_forest_score': float(rf_avg),
             'aggregate_score': float(aggregate),
-            'match_percentage': round(aggregate * 100, 2),
-            'methods_used': methods_used
+            'match_percentage': round(aggregate * 100, 2)
         })
 
     recommendations.sort(key=lambda x: x['aggregate_score'], reverse=True)
@@ -354,10 +376,16 @@ def aggregate_results(euclidean: List[Dict], weighted: List[Dict], rf: List[Dict
 
     return recommendations
 
-# ============================================
-# MAIN ENTRY POINT
-# ============================================
+def get_feature_weights():
+    conn = connect_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT feature_name, weight FROM weights ORDER BY id")
+    weights = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return [{'feature': w['feature_name'], 'weight': float(w['weight'])} for w in weights]
 
+# MAIN
 def main(input_file: str, output_file: str):
     """Main CBR system"""
     print("=" * 60)
@@ -369,63 +397,93 @@ def main(input_file: str, output_file: str):
         input_data = json.load(f)
 
     # Preprocess
-    print("\n[1/6] Preprocessing...")
-    start = datetime.now()
     preprocessed = preprocess_case(input_data)
-    preprocess_time = (datetime.now() - start).total_seconds() * 1000
 
-    new_case_vector = preprocessed['feature_vector']
+    # Load historical cases
+    conn = connect_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT c.*, cu.gender, cu.dob, cu.occupation, cu.income, cu.num_dependents,
+                p.id as product_id, p.name as product_name
+        FROM cases c
+        JOIN customers cu ON c.customer_id = cu.id
+        JOIN products p ON c.product_id = p.id
+    """)
+    historical_cases = cursor.fetchall()
 
-    # Load historical
-    print("[2/6] Loading cases...")
-    historical = load_historical_cases()
-    print(f"      Loaded {len(historical)} cases")
+    # Extract feature vectors
+    historical_vectors = []
+    case_info = []
+    for case in historical_cases:
+        vector = json.loads(case['feature_vector'])
+        historical_vectors.append(vector)
+        case_info.append({
+            'id': case['id'],
+            'product_id': case['product_id'],
+            'product_name': case['product_name'],
+            'feature_vector': vector
+        })
+
+    historical_vectors = np.array(historical_vectors)
+    new_case_vector = np.array(preprocessed['feature_vector'])
 
     # Run algorithms
-    print("[3/6] Euclidean...")
     start = datetime.now()
-    euclidean_results = euclidean_distance(new_case_vector, historical, k=5)
+    euclidean_results = euclidean_distance(new_case_vector, historical_vectors, case_info, k=5)
     euc_time = (datetime.now() - start).total_seconds() * 1000
 
-    print("[4/6] Weighted...")
     start = datetime.now()
-    weighted_results = weighted_euclidean(new_case_vector, historical, k=5)
+    weighted_results = weighted_euclidean(new_case_vector, historical_vectors, case_info, k=5)
     weighted_time = (datetime.now() - start).total_seconds() * 1000
 
-    print("[5/6] Random Forest...")
     start = datetime.now()
-    rf_results = random_forest_proximity(new_case_vector, historical, k=5)
+    rf_results = random_forest_proximity(new_case_vector, historical_vectors, case_info, k=5)
     rf_time = (datetime.now() - start).total_seconds() * 1000
 
     # Aggregate
     print("[6/6] Aggregating...")
     recommendations = aggregate_results(euclidean_results, weighted_results, rf_results)
 
-    total_time = preprocess_time + euc_time + weighted_time + rf_time
+    total_time = euc_time + weighted_time + rf_time
 
     # Output
     output = {
         'success': True,
+        'preprocessed': {
+            'age': preprocessed['age'],
+            'bmi': preprocessed['bmi'],
+            'health_risk_score': preprocessed['health_risk_score']
+        },
+        'feature_vector': preprocessed['feature_vector'],
         'recommendations': recommendations,
         'execution_time': {
-            'preprocessing': round(preprocess_time, 2),
             'euclidean': round(euc_time, 2),
             'weighted': round(weighted_time, 2),
             'random_forest': round(rf_time, 2),
             'total': round(total_time, 2)
         },
         'input_data': input_data,
-        'feature_vector': new_case_vector,
-        'preprocessed': {
-            **preprocessed['preprocessed'],
-            'age': preprocessed['age'],
-            'bmi': preprocessed['bmi'],
-            'health_risk_score': preprocessed['health_risk_score']
-        },
-        'algorithm_results': {
-            'euclidean': euclidean_results,
-            'weighted': weighted_results,
-            'random_forest': rf_results
+        'algorithm_details': {
+            'euclidean': {
+                'top_5_matches': euclidean_results,
+                'formula': 'd(x,y) = sqrt(sum((xi - yi)^2))',
+                'similarity_formula': 'similarity = 1 / (1 + distance)',
+            },
+            'weighted_euclidean': {
+                'top_5_matches': weighted_results,
+                'formula': 'dw(x,y) = sqrt(sum(wi * (xi - yi)^2))',
+                'similarity_formula': 'similarity = 1 / (1 + weighted_distance)',
+                'weights_used': get_feature_weights()
+            },
+            'random_forest': {
+                'top_5_matches': rf_results,
+                'proximity_formula': 'proximity = matching_leaves / total_trees',
+                'model_info': {
+                    'n_estimators': 100,
+                    'max_depth': 10,
+                    'random_state': 42
+                }
+            }
         }
     }
 

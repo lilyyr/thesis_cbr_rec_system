@@ -165,7 +165,7 @@
                             'critical_illness' => 'Critical Illness Coverage',
                             'income_protection' => 'Income Protection',
                             'savings' => 'Savings & Investment',
-                            'wealth_protection' => 'Wealth Protection'
+                            'wealth_protection' => 'Wealth Protection' // need to remove this
                         ];
                     @endphp
 

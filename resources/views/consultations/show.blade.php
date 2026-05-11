@@ -5,12 +5,20 @@
 @section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Header -->
-    <div class="mb-8">
+    <div class="mb-8 flex justify-between items-center">
+    <div>
         <a href="{{ route('consultations.index') }}" class="text-blue-600 hover:text-blue-800 mb-2 inline-block">
             ← Back to Consultations
         </a>
         <h1 class="text-3xl font-bold text-gray-900">Consultation Results</h1>
-        <p class="text-gray-600">AI-powered insurance recommendation for {{ $consultation->customer->name }}</p>
+        <p class="text-gray-600">Insurance recommendation for {{ $consultation->customer->name }}</p>
+    </div>
+
+    <a href="{{ route('consultations.process', $consultation->id) }}"
+        class="gold-gradient text-black px-6 py-3 hover:opacity-90 transition font-semibold flex items-center space-x-2 gold-border-glow">
+         <span>🔬</span>
+         <span>View CBR Process</span>
+     </a>
     </div>
 
     <!-- Top Recommendation -->

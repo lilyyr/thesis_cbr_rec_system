@@ -167,6 +167,7 @@ Log::info('CBR Input prepared', ['data' => $cbrInput]);
                 'euclidean_score' => $topRecommendation['euclidean_score'],
                 'weighted_euclidean_score' => $topRecommendation['weighted_euclidean_score'],
                 'random_forest_score' => $topRecommendation['random_forest_score'],
+                'algorithm_details'=> $cbrResult['algorithm_details'] ?? null,
             ]);
 
             return redirect()->route('consultations.show', $case->id)
@@ -176,6 +177,20 @@ Log::info('CBR Input prepared', ['data' => $cbrInput]);
             Log::error('Consultation error: ' . $e->getMessage());
             return back()->with('error', 'Error processing consultation: ' . $e->getMessage());
         }
+    }
+
+    public function process($id)
+    {
+        /** @var User $currentUser */
+        $currentUser = Auth::user();
+        $consultation = CaseModel::with(['customer', 'product', 'agent'])->findOrFail($id);
+
+        // Check permissions
+        if ($currentUser->isAgent() && $consultation->agent_id !== Auth::id()) {
+            abort(403);
+        }
+
+        return view('consultations.process', compact('consultation'));
     }
 
     /**
