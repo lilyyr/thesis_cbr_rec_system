@@ -173,7 +173,6 @@ def visualize_trees(case_id, num_trees=3):
             'traceback': traceback.format_exc()
         }
 
-
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         print(json.dumps({'success': False, 'error': 'Case ID required'}))
