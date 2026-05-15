@@ -9,13 +9,6 @@ import matplotlib
 matplotlib.use('Agg')  # Non-GUI backend
 
 def visualize_trees(case_id, num_trees=3):
-    """
-    Visualize decision trees and highlight the path for a specific case
-
-    Args:
-        case_id: The case ID to trace through trees
-        num_trees: Number of trees to visualize (default 3)
-    """
     try:
         # Paths
         model_path = os.path.join(os.path.dirname(__file__), 'models', 'rf_model.pkl')
@@ -41,7 +34,6 @@ def visualize_trees(case_id, num_trees=3):
 
         # Load case data if case_id provided
         case_vector = None
-        # decision_paths = []
 
         if case_id:
             import mysql.connector
@@ -62,9 +54,6 @@ def visualize_trees(case_id, num_trees=3):
                 if result:
                     case_vector = np.array(json.loads(result['feature_vector'])).reshape(1, -1)
 
-                    # Get decision paths for this case
-                    # decision_paths = rf_model.decision_path(case_vector).toarray()[0]
-
                 cursor.close()
                 conn.close()
 
@@ -76,33 +65,47 @@ def visualize_trees(case_id, num_trees=3):
 
         for i in range(min(num_trees, len(rf_model.estimators_))):
             tree = rf_model.estimators_[i]
+            tree_structure = tree.tree_
 
-            # Create figure
-            fig, ax = plt.subplots(figsize=(25, 15))
+            max_depth = tree.get_depth()
+            num_nodes = tree_structure.node_count
 
-            # Plot tree
+            # width = max(40, 8 * (max_depth / 1.5))
+            # height = max(25, 5 * (max_depth / 1.5))
+
+            width = max(40, 8 * max_depth)
+            height = max(25, 5 * max_depth)
+
+            fig, ax = plt.subplots(figsize=(width, height))
+
+            # Adjust subplot to give more room
+            plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05)
+
             plot_tree(
                 tree,
                 feature_names=feature_names,
                 filled=True,
                 rounded=True,
-                fontsize=10,
+                fontsize=9,
                 ax=ax,
-                proportion=True,
+                proportion=False,
                 precision=3,
-                # impurity=False
+                node_ids=True,
+                impurity=True,
+                class_names=None,
+                label='all',
+                max_depth=None
             )
 
             plt.title(f'Decision Tree #{i+1} from Random Forest', fontsize=16, fontweight='bold', pad=20)
 
-            # Save tree visualization
+            #dpi controls image resolution (i tried 100 and it seemed a bit blurry to me, 200 looks better)
+            #bbok_inches so no useless white space around the tree
+            #facecolor is just canvas bg color, white is clearer
             tree_filename = f'tree_{case_id}_{i+1}.png'
             tree_path = os.path.join(output_dir, tree_filename)
-            plt.savefig(tree_path, dpi=150, bbox_inches='tight', facecolor='white')
+            plt.savefig(tree_path, dpi=200, bbox_inches='tight', facecolor='white')
             plt.close()
-
-            # Get tree structure details
-            tree_structure = tree.tree_
 
             # Get the path this case takes through the tree
             if case_vector is not None:
@@ -114,16 +117,16 @@ def visualize_trees(case_id, num_trees=3):
 
                 # Extract decision rules along the path
                 path_rules = []
-                # for node_id in node_index:
                 for idx, node_id in enumerate(node_index):
                     if tree_structure.feature[node_id] != -2:  # Not a leaf
                         feature = feature_names[tree_structure.feature[node_id]]
                         threshold = tree_structure.threshold[node_id]
 
+                        feature_idx = tree_structure.feature[node_id]
+                        feature_value = float(case_vector[0][feature_idx])
+
                         # Determine which branch was taken
-                        # if node_id < len(node_index) - 1:
                         if idx < len(node_index) - 1:
-                            # next_node = node_index[list(node_index).index(node_id) + 1]
                             next_node = node_index[idx + 1]
                             if next_node == tree_structure.children_left[node_id]:
                                 decision = "≤"
@@ -135,18 +138,14 @@ def visualize_trees(case_id, num_trees=3):
                                 'feature': feature,
                                 'threshold': float(threshold),
                                 'decision': decision,
-                                'rule': f"{feature} {decision} {threshold:.4f}"
+                                'rule': f"{feature} = {feature_value:.4f} {decision} {threshold:.4f}"
                             })
-
-                # Get text representation of the tree
-                tree_text = export_text(tree, feature_names=feature_names, max_depth=4)
 
                 tree_info.append({
                     'tree_number': i + 1,
                     'image_filename': tree_filename,
                     'leaf_node': int(leaf_id),
                     'path_rules': path_rules,
-                    'tree_text': tree_text,
                     'total_nodes': int(tree_structure.node_count),
                     'max_depth': int(tree.get_depth())
                 })
@@ -158,7 +157,6 @@ def visualize_trees(case_id, num_trees=3):
                     'max_depth': int(tree.get_depth())
                 })
 
-        # Return results
         result = {
             'success': True,
             'trees': tree_info,
@@ -171,7 +169,8 @@ def visualize_trees(case_id, num_trees=3):
     except Exception as e:
         return {
             'success': False,
-            'error': str(e)
+            'error': str(e),
+            'traceback': traceback.format_exc()
         }
 
 
