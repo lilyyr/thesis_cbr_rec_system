@@ -6,7 +6,6 @@ use App\Models\Customer;
 use App\Models\CaseModel;
 use App\Models\Product;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
@@ -167,7 +166,7 @@ Log::info('CBR Input prepared', ['data' => $cbrInput]);
                 'euclidean_score' => $topRecommendation['euclidean_score'],
                 'weighted_euclidean_score' => $topRecommendation['weighted_euclidean_score'],
                 'random_forest_score' => $topRecommendation['random_forest_score'],
-                'algorithm_details'=> $cbrResult['algorithm_details'] ?? null,
+                'algorithm_details'=> $cbrResult['algorithm_details'],
             ]);
 
             return redirect()->route('consultations.show', $case->id)

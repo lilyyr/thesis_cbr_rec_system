@@ -2,37 +2,115 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\API\RecommendationController;
+use App\Http\Controllers\API\TreeController;
+use App\Http\Controllers\API\ModelController;
 
-// Public test route
-// Route::get('/test', function () {
-//     return response()->json(['message' => 'API is working!']);
-// });
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+| These routes use Sanctum authentication and return JSON responses
+*/
 
-// // Protected API routes (require authentication)
-// Route::middleware('auth:sanctum')->group(function () {
+// Public test endpoint
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'Insurance CBR API is running',
+        'version' => '1.0.0',
+        'timestamp' => now()->toIso8601String()
+    ]);
+});
 
-// //     // Get authenticated user
-//     Route::get('/user', function (Request $request) {
-//         return $request->user();
-//     });
+Route::post('/login', function (Request $request) {
+    $request->validate([
+        'email' => 'required|email',
+        'password' => 'required'
+    ]);
 
-//     // CBR Recommendation endpoint
-//     Route::post('/v1/recommendations/get', [RecommendationController::class, 'getRecommendations'])
-//         ->middleware('role:admin,agent');
+    $user = \App\Models\User::where('email', $request->email)->first();
 
-// });
-// // use Illuminate\Support\Facades\Route;
-// use App\Http\Controllers\API\RecommendationController;
+    if (!$user || !Hash::check($request->password, $user->password)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Invalid credentials'
+        ], 401);
+    }
 
-// Route::prefix('v1')->group(function () {
+    // Delete old tokens
+    $user->tokens()->delete();
 
-//     // CBR Recommendation endpoint
-//     Route::post('/recommendations/get', [RecommendationController::class, 'getRecommendations'])
-//         ->name('api.recommendations.get');
+    // Create new token
+    $token = $user->createToken('api-token')->plainTextToken;
 
-// use Illuminate\Support\Facades\Route;
-// use App\Http\Controllers\API\RecommendationController;
+    return response()->json([
+        'success' => true,
+        'message' => 'Login successful',
+        'data' => [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role
+            ],
+            'token' => $token,
+            'token_type' => 'Bearer'
+        ]
+    ]);
+});
 
-// // Without prefix - for testing
-// Route::post('/test-cbr', [RecommendationController::class, 'getRecommendations']);
+// Protected API routes
+Route::middleware('auth:sanctum')->group(function () {
+
+    // Get authenticated user
+    Route::get('/user', function (Request $request) {
+        return response()->json([
+            'success' => true,
+            'data' => $request->user()
+        ]);
+    });
+
+    // CBR Recommendation API
+    Route::prefix('recommendations')->group(function () {
+        // Get recommendation for new case
+        Route::post('/', [RecommendationController::class, 'getRecommendation'])
+            ->middleware('role:admin,agent');
+
+        // Get consultation history
+        Route::get('/', [RecommendationController::class, 'getHistory'])
+            ->middleware('role:admin,agent,client');
+
+        // Get specific consultation
+        Route::get('/{id}', [RecommendationController::class, 'getConsultation'])
+            ->middleware('role:admin,agent,client');
+    });
+
+    // Tree Visualization API
+    Route::prefix('visualizations')->group(function () {
+        // Generate tree visualizations
+        Route::post('/trees/{caseId}', [TreeController::class, 'generateTrees'])
+            ->middleware('role:admin,agent');
+
+        // Get visualization status
+        Route::get('/trees/{caseId}', [TreeController::class, 'getTreeStatus'])
+            ->middleware('role:admin,agent');
+    });
+
+    // Model Management API (Admin only)
+    Route::prefix('model')->middleware('role:admin')->group(function () {
+        // Train Random Forest model
+        Route::post('/train', [ModelController::class, 'train']);
+
+        // Get model status
+        Route::get('/status', [ModelController::class, 'status']);
+
+        // Get model metrics
+        Route::get('/metrics', [ModelController::class, 'metrics']);
+    });
+
+    // Statistics API
+    Route::get('/statistics', [RecommendationController::class, 'getStatistics'])
+        ->middleware('role:admin,agent');
+});

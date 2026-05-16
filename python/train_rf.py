@@ -65,7 +65,7 @@ def train_model(X, y):
 
     rf.fit(X, y)
 
-    print("✓ Training complete!")
+    print("Training complete!")
     return rf
 
 def generate_leaf_cache(rf, X, case_ids):
@@ -75,7 +75,7 @@ def generate_leaf_cache(rf, X, case_ids):
     # Get leaf assignments for all cases
     leaf_assignments = rf.apply(X)
 
-    print(f"✓ Generated leaf assignments: {leaf_assignments.shape}")
+    print(f"Generated leaf assignments: {leaf_assignments.shape}")
 
     # CREATE DICTIONARY KEYED BY CASE_ID
     leaf_dict = {}
@@ -98,7 +98,7 @@ def save_model(rf, leaf_cache_dict):
     # Save model
     model_path = os.path.join(models_dir, 'rf_model.pkl')
     joblib.dump(rf, model_path)
-    print(f"✓ Model saved to: {model_path}")
+    print(f"Model saved to: {model_path}")
 
     # Save leaf cache
     cache_path = os.path.join(models_dir, 'leaf_cache.json')
@@ -111,7 +111,7 @@ def save_model(rf, leaf_cache_dict):
     with open(cache_path, 'w') as f:
         json.dump(cache_data, f)
 
-    print(f"✓ Leaf cache saved to: {cache_path}")
+    print(f"Leaf cache saved to: {cache_path}")
 
 def main():
     """Main training function"""
@@ -135,7 +135,7 @@ def main():
     save_model(rf, leaf_cache_dict)
 
     print("\n" + "=" * 60)
-    print("✓ Training Complete!")
+    print("Training Complete!")
     print("=" * 60)
 
 if __name__ == '__main__':
