@@ -25,9 +25,9 @@ def visualize_trees(case_id, num_trees=3):
 
         # Feature names
         feature_names = [
-            'age_norm', 'gender', 'income_norm', 'dependents',
-            'bmi_norm', 'health_risk', 'ins_period', 'prem_period',
-            'overseas', 'has_health_ins',
+            'age_norm', 'gender', 'income_norm', 'dependents', 'bmi_norm',
+            'ins_period', 'prem_period', 'overseas', 'has_health_ins',
+            'health_risk',
             'goal_family', 'goal_health', 'goal_retire', 'goal_edu',
             'goal_critical', 'goal_income', 'goal_savings', 'goal_wealth'
         ]
@@ -42,7 +42,7 @@ def visualize_trees(case_id, num_trees=3):
             try:
                 conn = mysql.connector.connect(
                     host='localhost',
-                    database='rec_ins_cbr',
+                    database='rec_ins_cbr2',
                     user='root',
                     password=''
                 )
