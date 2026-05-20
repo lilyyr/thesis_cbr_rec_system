@@ -12,28 +12,38 @@ class Customer extends Model
 
     protected $fillable = [
         'name',
-        'email',
         'gender',
+        'marital_status',
         'dob',
-        'occupation',
-        'income',
+        'occupation_id',
+        'income_range',
         'num_dependents'
     ];
 
     protected $casts = [
         'dob' => 'date',
-        'income' => 'decimal:2'
     ];
 
-    // Relationship
+    public function occupation()
+    {
+        return $this->belongsTo(Occupation::class);
+    }
+
     public function cases()
     {
         return $this->hasMany(CaseModel::class);
     }
 
-    // Accessor for age
     public function getAgeAttribute()
     {
         return Carbon::parse($this->dob)->age;
+    }
+
+    /**
+     * Relationship: Customer may have a user account
+     */
+    public function user()
+    {
+        return $this->hasOne(User::class, 'customer_id');
     }
 }

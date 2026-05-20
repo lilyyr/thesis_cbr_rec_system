@@ -20,6 +20,12 @@ class CaseModel extends Model
         'premium_payment_period',
         'overseas_plans',
         'has_existing_health_insurance',
+        'high_risk_hobby',
+        'premium_budget',
+        'beneficiary_name',
+        'beneficiary_dob',
+        'beneficiary_gender',
+        'beneficiary_relationship',
         'height',
         'weight',
         'bmi',
@@ -40,6 +46,7 @@ class CaseModel extends Model
         'weighted_euclidean_score',
         'random_forest_score',
         'algorithm_details',
+        'all_recommendations',
     ];
 
     protected $casts = [
@@ -47,6 +54,9 @@ class CaseModel extends Model
         'feature_vector' => 'array',
         'overseas_plans' => 'boolean',
         'has_existing_health_insurance' => 'boolean',
+        'high_risk_hobby' => 'boolean',
+        'premium_budget' => 'decimal:2',
+        'beneficiary_dob' => 'date',
         'weight_change_last_year' => 'boolean',
         'smoked_last_year' => 'boolean',
         'hospitalization_last_5_years' => 'boolean',
@@ -65,6 +75,7 @@ class CaseModel extends Model
         'weighted_euclidean_score' => 'decimal:6',
         'random_forest_score' => 'decimal:6',
         'algorithm_details' => 'array',
+        'all_recommendations' => 'array',
     ];
 
     // Relationships

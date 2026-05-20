@@ -1,321 +1,394 @@
 @extends('layouts.app')
 
-@section('title', 'Consultation Results')
+@section('title', 'Consultation Details')
 
 @section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <!-- Header -->
-    <div class="mb-8 flex justify-between items-center">
-    <div>
-        <a href="{{ route('consultations.index') }}" class="text-blue-600 hover:text-blue-800 mb-2 inline-block">
+    <!-- Loading state -->
+    <div id="loading" class="text-center py-12">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-600"></div>
+        <p class="mt-4 text-gray-600">Loading consultation details...</p>
+    </div>
+
+    <!-- Error state -->
+    <div id="error-state" class="hidden text-center py-12 bg-red-50 border border-red-200 rounded">
+        <p class="text-red-600 text-lg font-semibold">Error loading consultation</p>
+        <p id="error-message" class="text-red-500 mt-2"></p>
+        <a href="{{ route('consultations.index') }}" class="text-yellow-600 hover:text-yellow-700 mt-4 inline-block">
             ← Back to Consultations
         </a>
-        <h1 class="text-3xl font-bold text-gray-900">Consultation Results</h1>
-        <p class="text-gray-600">Insurance recommendation for {{ $consultation->customer->name }}</p>
     </div>
 
-    <a href="{{ route('consultations.process', $consultation->id) }}"
-        class="gold-gradient text-black px-6 py-3 hover:opacity-90 transition font-semibold flex items-center space-x-2 gold-border-glow">
-         <span>🔬</span>
-         <span>View CBR Process</span>
-     </a>
-    </div>
-
-    <!-- Top Recommendation -->
-    <div class="bg-gradient-to-r from-green-600 to-green-800 rounded-lg shadow-xl p-8 text-white mb-8">
-        <div class="flex items-center justify-between">
-            <div>
-                <div class="text-sm uppercase tracking-wide text-green-200 mb-2">Top Recommendation</div>
-                <h2 class="text-4xl font-bold mb-4">{{ $consultation->product->name }}</h2>
-                <p class="text-green-100 text-lg mb-4">{{ $consultation->product->description }}</p>
-
-                <div class="flex items-center space-x-6">
-                    <div>
-                        <div class="text-green-200 text-sm">Base Premium</div>
-                        <div class="text-2xl font-bold">Rp {{ number_format($consultation->product->base_premium, 0, ',', '.') }}</div>
-                    </div>
-                    <div>
-                        <div class="text-green-200 text-sm">Insurance Period</div>
-                        <div class="text-2xl font-bold">{{ $consultation->insurance_period }} years</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="text-center">
-                @php
-                    $avgScore = ($consultation->euclidean_score + $consultation->weighted_euclidean_score + $consultation->random_forest_score) / 3 * 100;
-                @endphp
-                <div class="bg-white text-green-600 rounded-full w-32 h-32 flex items-center justify-center">
-                    <div>
-                        <div class="text-5xl font-bold">{{ round($avgScore, 1) }}</div>
-                        <div class="text-sm">% Match</div>
-                    </div>
-                </div>
-                <div class="mt-3 text-green-200 text-sm">Average Score</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="grid lg:grid-cols-3 gap-8">
-        <!-- Left Column: Customer & Consultation Info -->
-        <div class="lg:col-span-1">
-            <!-- Customer Info -->
-            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <h3 class="text-lg font-bold text-gray-900 mb-4">Customer Information</h3>
-                <div class="space-y-3 text-sm">
-                    <div>
-                        <div class="text-gray-500">Name</div>
-                        <div class="font-semibold">{{ $consultation->customer->name }}</div>
-                    </div>
-                    <div>
-                        <div class="text-gray-500">Email</div>
-                        <div class="font-semibold">{{ $consultation->customer->email }}</div>
-                    </div>
-                    <div>
-                        <div class="text-gray-500">Gender</div>
-                        <div class="font-semibold capitalize">{{ $consultation->customer->gender }}</div>
-                    </div>
-                    <div>
-                        <div class="text-gray-500">Age</div>
-                        <div class="font-semibold">{{ $consultation->customer->age }} years</div>
-                    </div>
-                    <div>
-                        <div class="text-gray-500">Income</div>
-                        <div class="font-semibold">Rp {{ number_format($consultation->customer->income, 0, ',', '.') }}</div>
-                    </div>
-                    <div>
-                        <div class="text-gray-500">Dependents</div>
-                        <div class="font-semibold">{{ $consultation->customer->num_dependents }}</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Health Metrics -->
-            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <h3 class="text-lg font-bold text-gray-900 mb-4">Health Metrics</h3>
-                <div class="space-y-3">
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-600">BMI</span>
-                        <span class="font-bold text-lg">{{ $consultation->bmi }}</span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2">
-                        @php
-                            $bmiPercent = min(($consultation->bmi / 40) * 100, 100);
-                            $bmiColor = $consultation->bmi < 18.5 ? 'bg-yellow-500' :
-                                       ($consultation->bmi < 25 ? 'bg-green-500' :
-                                       ($consultation->bmi < 30 ? 'bg-orange-500' : 'bg-red-500'));
-                        @endphp
-                        <div class="{{ $bmiColor }} h-2 rounded-full" style="width: {{ $bmiPercent }}%"></div>
-                    </div>
-                    <div class="text-xs text-gray-500">
-                        @if($consultation->bmi < 18.5)
-                            Underweight
-                        @elseif($consultation->bmi < 25)
-                            Normal
-                        @elseif($consultation->bmi < 30)
-                            Overweight
-                        @else
-                            Obese
-                        @endif
-                    </div>
-
-                    <div class="flex justify-between items-center mt-4">
-                        <span class="text-gray-600">Health Risk Score</span>
-                        <span class="font-bold text-lg">{{ $consultation->health_risk_score }} / 25</span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2">
-                        @php
-                            $riskPercent = ($consultation->health_risk_score / 25) * 100;
-                            $riskColor = $consultation->health_risk_score < 5 ? 'bg-green-500' :
-                                        ($consultation->health_risk_score < 10 ? 'bg-yellow-500' :
-                                        ($consultation->health_risk_score < 15 ? 'bg-orange-500' : 'bg-red-500'));
-                        @endphp
-                        <div class="{{ $riskColor }} h-2 rounded-full" style="width: {{ $riskPercent }}%"></div>
-                    </div>
-                    <div class="text-xs text-gray-500">
-                        @if($consultation->health_risk_score < 5)
-                            Low Risk
-                        @elseif($consultation->health_risk_score < 10)
-                            Medium Risk
-                        @elseif($consultation->health_risk_score < 15)
-                            High Risk
-                        @else
-                            Very High Risk
-                        @endif
-                    </div>
-                </div>
-            </div>
-
-            <!-- Consultation Details -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h3 class="text-lg font-bold text-gray-900 mb-4">Consultation Details</h3>
-                <div class="space-y-3 text-sm">
-                    <div>
-                        <div class="text-gray-500">Agent</div>
-                        <div class="font-semibold">{{ $consultation->agent->name }}</div>
-                    </div>
-                    <div>
-                        <div class="text-gray-500">Date</div>
-                        <div class="font-semibold">{{ $consultation->created_at->format('M d, Y h:i A') }}</div>
-                    </div>
-                    <div>
-                        <div class="text-gray-500">Premium Period</div>
-                        <div class="font-semibold">{{ $consultation->premium_payment_period }} years</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Column: Algorithm Results & Goals -->
-        <div class="lg:col-span-2">
-            <!-- Algorithm Scores -->
-            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <h3 class="text-lg font-bold text-gray-900 mb-6">Algorithm Scores</h3>
-
-                <div class="grid md:grid-cols-3 gap-6 mb-6">
-                    <!-- Euclidean -->
-                    <div class="text-center p-6 bg-blue-50 rounded-lg">
-                        <div class="text-4xl font-bold text-blue-600 mb-2">
-                            {{ round($consultation->euclidean_score * 100, 1) }}%
-                        </div>
-                        <div class="text-sm font-semibold text-gray-700 mb-2">Euclidean Distance</div>
-                        <div class="text-xs text-gray-500">Standard similarity measure</div>
-                    </div>
-
-                    <!-- Weighted -->
-                    <div class="text-center p-6 bg-green-50 rounded-lg">
-                        <div class="text-4xl font-bold text-green-600 mb-2">
-                            {{ round($consultation->weighted_euclidean_score * 100, 1) }}%
-                        </div>
-                        <div class="text-sm font-semibold text-gray-700 mb-2">Weighted Euclidean</div>
-                        <div class="text-xs text-gray-500">Feature-importance weighted</div>
-                    </div>
-
-                    <!-- Random Forest -->
-                    <div class="text-center p-6 bg-purple-50 rounded-lg">
-                        <div class="text-4xl font-bold text-purple-600 mb-2">
-                            {{ round($consultation->random_forest_score * 100, 1) }}%
-                        </div>
-                        <div class="text-sm font-semibold text-gray-700 mb-2">Random Forest</div>
-                        <div class="text-xs text-gray-500">Machine learning proximity</div>
-                    </div>
-                </div>
-
-                <div class="bg-gray-50 rounded-lg p-4">
-                    <div class="text-sm text-gray-600 mb-2">
-                        <strong>How it works:</strong> Our AI system analyzed {{ \App\Models\CaseModel::count() }} historical cases using three different algorithms to find the best match.
-                    </div>
-                    <div class="text-xs text-gray-500">
-                        The final recommendation combines all three scores to provide the most accurate result.
-                    </div>
-                </div>
-            </div>
-
-            <!-- Financial Goals -->
-            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <h3 class="text-lg font-bold text-gray-900 mb-4">Financial Goals</h3>
-                <div class="flex flex-wrap gap-2">
-                    @foreach($consultation->financial_goals as $goal)
-                        <span class="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-semibold">
-                            {{ ucwords(str_replace('_', ' ', $goal)) }}
-                        </span>
-                    @endforeach
-                </div>
-            </div>
-
-            <!-- Health Conditions -->
-            @php
-                $hasHealthConditions = $consultation->weight_change_last_year ||
-                                      $consultation->smoked_last_year ||
-                                      $consultation->hospitalization_last_5_years ||
-                                      $consultation->lab_tests_last_5_years ||
-                                      $consultation->accident_poisoning_last_5_years ||
-                                      $consultation->has_disability ||
-                                      $consultation->has_serious_illness ||
-                                      $consultation->receiving_treatment ||
-                                      $consultation->family_medical_history ||
-                                      $consultation->is_pregnant;
-            @endphp
-
-            @if($hasHealthConditions)
-                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                    <h3 class="text-lg font-bold text-gray-900 mb-4">Health Conditions Reported</h3>
-                    <div class="space-y-2">
-                        @if($consultation->weight_change_last_year)
-                            <div class="flex items-center text-sm">
-                                <span class="text-orange-500 mr-2">⚠️</span>
-                                <span>Significant weight change in last year</span>
-                            </div>
-                        @endif
-                        @if($consultation->smoked_last_year)
-                            <div class="flex items-center text-sm">
-                                <span class="text-orange-500 mr-2">⚠️</span>
-                                <span>Smoked in the last year</span>
-                            </div>
-                        @endif
-                        @if($consultation->hospitalization_last_5_years)
-                            <div class="flex items-center text-sm">
-                                <span class="text-red-500 mr-2">⚠️</span>
-                                <span>Hospitalized in last 5 years</span>
-                            </div>
-                        @endif
-                        @if($consultation->has_serious_illness)
-                            <div class="flex items-center text-sm">
-                                <span class="text-red-500 mr-2">⚠️</span>
-                                <span>Has serious illness</span>
-                            </div>
-                        @endif
-                        @if($consultation->has_disability)
-                            <div class="flex items-center text-sm">
-                                <span class="text-red-500 mr-2">⚠️</span>
-                                <span>Has disability</span>
-                            </div>
-                        @endif
-                        @if($consultation->receiving_treatment)
-                            <div class="flex items-center text-sm">
-                                <span class="text-orange-500 mr-2">⚠️</span>
-                                <span>Currently receiving medical treatment</span>
-                            </div>
-                        @endif
-                        @if($consultation->family_medical_history)
-                            <div class="flex items-center text-sm">
-                                <span class="text-yellow-500 mr-2">⚠️</span>
-                                <span>Family medical history</span>
-                            </div>
-                        @endif
-                    </div>
-
-                    @if($consultation->health_details)
-                        <div class="mt-4 p-4 bg-gray-50 rounded">
-                            <div class="text-sm font-semibold text-gray-700 mb-1">Additional Details:</div>
-                            <div class="text-sm text-gray-600">{{ $consultation->health_details }}</div>
-                        </div>
-                    @endif
-                </div>
-            @endif
-
-            <!-- Alternative Products -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h3 class="text-lg font-bold text-gray-900 mb-4">Alternative Products</h3>
-                <p class="text-sm text-gray-600 mb-4">Other products that may also suit this customer</p>
-
-                <div class="space-y-3">
-                    @foreach($allProducts->where('id', '!=', $consultation->product_id)->take(3) as $product)
-                        <div class="p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <div class="font-semibold text-gray-900">{{ $product->name }}</div>
-                                    <div class="text-sm text-gray-600">{{ $product->description }}</div>
-                                </div>
-                                <div class="text-right">
-                                    <div class="font-bold text-blue-600">Rp {{ number_format($product->base_premium, 0, ',', '.') }}</div>
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Consultation details (populated by JavaScript) -->
+    <div id="consultation-details" class="hidden space-y-6"></div>
 </div>
+
+<script>
+const apiToken = document.querySelector('meta[name="api-token"]').content;
+const consultationId = {{ $consultationId }};
+
+async function loadConsultation() {
+    try {
+        const response = await fetch(`/api/recommendations/${consultationId}`, {
+            headers: {
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${apiToken}`
+            }
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to load consultation');
+        }
+
+        const result = await response.json();
+        displayConsultation(result.data);
+
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('error-state').classList.remove('hidden');
+        document.getElementById('error-message').textContent = error.message;
+    }
+}
+
+function displayConsultation(consultation) {
+    document.getElementById('loading').classList.add('hidden');
+
+    const matchPercentage = Math.round(
+        (consultation.euclidean_score + consultation.weighted_euclidean_score + consultation.random_forest_score) / 3 * 100
+    );
+
+    // Format financial goals
+    const goalLabels = {
+        'family_protection': 'Family Protection',
+        'health': 'Health Coverage',
+        'retirement': 'Retirement Planning',
+        'education': 'Education Fund',
+        'critical_illness': 'Critical Illness',
+        'income_replacement': 'Income Replacement',
+        'savings': 'Savings',
+        'wealth_accumulation': 'Wealth Accumulation'
+    };
+
+    const goals = Array.isArray(consultation.financial_goals)
+        ? consultation.financial_goals.map(g => goalLabels[g] || g).join(', ')
+        : 'N/A';
+
+    // Format income range
+    const incomeLabels = {
+        'below_50m': 'Below Rp 50 Million',
+        '50m_100m': 'Rp 50M - 100M',
+        '100m_300m': 'Rp 100M - 300M',
+        '300m_500m': 'Rp 300M - 500M',
+        '500m_1b': 'Rp 500M - 1B',
+        'above_1b': 'Above Rp 1 Billion'
+    };
+
+    // Format dates
+    const formatDate = (dateStr) => {
+        if (!dateStr) return 'N/A';
+        return new Date(dateStr).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    };
+
+    // BMI Category
+    const getBMICategory = (bmi) => {
+        if (bmi < 18.5) return { text: 'Underweight', color: 'text-blue-600' };
+        if (bmi < 25) return { text: 'Normal', color: 'text-green-600' };
+        if (bmi < 30) return { text: 'Overweight', color: 'text-yellow-600' };
+        return { text: 'Obese', color: 'text-red-600' };
+    };
+
+    const bmiCategory = getBMICategory(consultation.bmi);
+
+    // Build the HTML
+    document.getElementById('consultation-details').innerHTML = `
+        <!-- Header -->
+        <div class="flex justify-between items-center">
+            <h1 class="text-4xl font-bold text-gray-900">Consultation Details</h1>
+            <a href="{{ route('consultations.index') }}" class="text-yellow-600 hover:text-yellow-700 font-semibold">
+                ← Back to List
+            </a>
+        </div>
+
+        <!-- Recommendation Card -->
+        <div class="bg-gradient-to-r from-yellow-600 to-yellow-500 text-white p-8 rounded-lg shadow-lg">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-yellow-100 text-sm uppercase tracking-wide mb-2">Recommended Product</p>
+                    <h2 class="text-4xl font-bold mb-4">${consultation.product.name}</h2>
+                    <p class="text-yellow-100 mb-4">${consultation.product.description || ''}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-yellow-100 text-sm">Overall Match</p>
+                    <p class="text-5xl font-bold">${matchPercentage}%</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-6 mt-6 pt-6 border-t border-yellow-400">
+                <div>
+                    <p class="text-yellow-100 text-sm">Euclidean Distance</p>
+                    <p class="text-3xl font-bold">${(consultation.euclidean_score * 100).toFixed(1)}%</p>
+                </div>
+                <div>
+                    <p class="text-yellow-100 text-sm">Weighted Euclidean</p>
+                    <p class="text-3xl font-bold">${(consultation.weighted_euclidean_score * 100).toFixed(1)}%</p>
+                </div>
+                <div>
+                    <p class="text-yellow-100 text-sm">Random Forest Proximity</p>
+                    <p class="text-3xl font-bold">${(consultation.random_forest_score * 100).toFixed(1)}%</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer Information -->
+        <div class="bg-white border border-gray-200 p-6 rounded-lg">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-yellow-600">Customer Information</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Full Name</p>
+                    <p class="text-lg font-semibold text-gray-900">${consultation.customer.name}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Gender</p>
+                    <p class="text-lg font-semibold text-gray-900 capitalize">${consultation.customer.gender}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Date of Birth</p>
+                    <p class="text-lg font-semibold text-gray-900">${formatDate(consultation.customer.dob)}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Age</p>
+                    <p class="text-lg font-semibold text-gray-900">${consultation.customer.age} years old</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Marital Status</p>
+                    <p class="text-lg font-semibold text-gray-900 capitalize">${consultation.customer.marital_status || 'N/A'}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Occupation</p>
+                    <p class="text-lg font-semibold text-gray-900">${consultation.customer.occupation ? consultation.customer.occupation.name : 'N/A'}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Income Range</p>
+                    <p class="text-lg font-semibold text-gray-900">${incomeLabels[consultation.customer.income_range] || 'N/A'}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Number of Dependents</p>
+                    <p class="text-lg font-semibold text-gray-900">${consultation.customer.num_dependents}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Beneficiary Information -->
+        <div class="bg-white border border-gray-200 p-6 rounded-lg">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-yellow-600">Beneficiary Information</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Beneficiary Name</p>
+                    <p class="text-lg font-semibold text-gray-900">${consultation.beneficiary_name || 'N/A'}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Date of Birth</p>
+                    <p class="text-lg font-semibold text-gray-900">${formatDate(consultation.beneficiary_dob)}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Gender</p>
+                    <p class="text-lg font-semibold text-gray-900 capitalize">${consultation.beneficiary_gender || 'N/A'}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Relationship</p>
+                    <p class="text-lg font-semibold text-gray-900 capitalize">${consultation.beneficiary_relationship || 'N/A'}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Insurance Details -->
+        <div class="bg-white border border-gray-200 p-6 rounded-lg">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-yellow-600">Insurance Details</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Financial Goals</p>
+                    <p class="text-lg font-semibold text-gray-900">${goals}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Insurance Period</p>
+                    <p class="text-lg font-semibold text-gray-900">${consultation.insurance_period} years</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Premium Payment Period</p>
+                    <p class="text-lg font-semibold text-gray-900">${consultation.premium_payment_period} years</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Premium Budget</p>
+                    <p class="text-lg font-semibold text-gray-900">Rp ${(consultation.premium_budget || 0).toLocaleString('id-ID')}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Overseas Plans</p>
+                    <p class="text-lg font-semibold text-gray-900">${consultation.overseas_plans ? '✓ Yes' : '✗ No'}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Existing Health Insurance</p>
+                    <p class="text-lg font-semibold text-gray-900">${consultation.has_existing_health_insurance ? '✓ Yes' : '✗ No'}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">High Risk Hobby</p>
+                    <p class="text-lg font-semibold text-gray-900">${consultation.high_risk_hobby ? '✓ Yes' : '✗ No'}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Health Information -->
+        <div class="bg-white border border-gray-200 p-6 rounded-lg">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-yellow-600">Health Information</h2>
+
+            ${consultation.has_serious_illness ? `
+                <div class="bg-orange-50 border border-orange-200 text-orange-800 p-4 rounded mb-6">
+                    <p class="font-semibold">⚠️ Important Notice</p>
+                    <p class="text-sm mt-1">Customer has a serious illness. Health-focused insurance products have been filtered from recommendations.</p>
+                </div>
+            ` : ''}
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Height</p>
+                    <p class="text-lg font-semibold text-gray-900">${consultation.height} cm</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Weight</p>
+                    <p class="text-lg font-semibold text-gray-900">${consultation.weight} kg</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">BMI</p>
+                    <p class="text-lg font-semibold ${bmiCategory.color}">${consultation.bmi} (${bmiCategory.text})</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Health Risk Score</p>
+                    <p class="text-lg font-semibold text-gray-900">${parseFloat(consultation.health_risk_score || 0).toFixed(1)} / 25</p>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 border border-gray-200 p-4 rounded">
+                <p class="font-semibold text-gray-900 mb-3">Health Factors</p>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                    <div class="flex items-center">
+                        <span class="mr-2">${consultation.weight_change_last_year ? '✓' : '✗'}</span>
+                        Weight change last year
+                    </div>
+                    <div class="flex items-center">
+                        <span class="mr-2">${consultation.smoked_last_year ? '✓' : '✗'}</span>
+                        Smoked last year
+                    </div>
+                    <div class="flex items-center">
+                        <span class="mr-2">${consultation.hospitalization_last_5_years ? '✓' : '✗'}</span>
+                        Hospitalization (5 years)
+                    </div>
+                    <div class="flex items-center">
+                        <span class="mr-2">${consultation.lab_tests_last_5_years ? '✓' : '✗'}</span>
+                        Lab tests (5 years)
+                    </div>
+                    <div class="flex items-center">
+                        <span class="mr-2">${consultation.accident_poisoning_last_5_years ? '✓' : '✗'}</span>
+                        Accident/poisoning (5 years)
+                    </div>
+                    <div class="flex items-center">
+                        <span class="mr-2">${consultation.has_disability ? '✓' : '✗'}</span>
+                        Has disability
+                    </div>
+                    <div class="flex items-center">
+                        <span class="mr-2">${consultation.has_serious_illness ? '✓' : '✗'}</span>
+                        Has serious illness
+                    </div>
+                    <div class="flex items-center">
+                        <span class="mr-2">${consultation.receiving_treatment ? '✓' : '✗'}</span>
+                        Receiving treatment
+                    </div>
+                    <div class="flex items-center">
+                        <span class="mr-2">${consultation.family_medical_history ? '✓' : '✗'}</span>
+                        Family medical history
+                    </div>
+                    ${consultation.customer.gender === 'female' ? `
+                        <div class="flex items-center">
+                            <span class="mr-2">${consultation.is_pregnant ? '✓' : '✗'}</span>
+                            Is pregnant
+                        </div>
+                    ` : ''}
+                </div>
+
+                ${consultation.health_details ? `
+                    <div class="mt-4 pt-4 border-t border-gray-300">
+                        <p class="font-semibold text-gray-900 mb-2">Additional Details</p>
+                        <p class="text-gray-700">${consultation.health_details}</p>
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+
+        <!-- Agent Information -->
+        <div class="bg-white border border-gray-200 p-6 rounded-lg">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-yellow-600">Consultation Details</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Consultation ID</p>
+                    <p class="text-lg font-semibold text-gray-900">#${consultation.id}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Agent</p>
+                    <p class="text-lg font-semibold text-gray-900">${consultation.agent ? consultation.agent.name : 'N/A'}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Date Created</p>
+                    <p class="text-lg font-semibold text-gray-900">${formatDate(consultation.created_at)}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex gap-4">
+            <a href="/consultations/${consultation.id}/process"
+               class="bg-black text-white px-6 py-3 rounded hover:bg-gray-800 transition">
+                View CBR Process Visualization →
+            </a>
+
+            <button onclick="window.print()"
+                    class="bg-white border-2 border-gray-300 text-gray-700 px-6 py-3 rounded hover:bg-gray-50 transition">
+                Print Report
+            </button>
+        </div>
+    `;
+
+    document.getElementById('consultation-details').classList.remove('hidden');
+}
+
+loadConsultation();
+</script>
 @endsection

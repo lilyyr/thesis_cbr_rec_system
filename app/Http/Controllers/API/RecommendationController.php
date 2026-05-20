@@ -26,14 +26,24 @@ class RecommendationController extends Controller
             'name' => 'required|string|max:255',
             'gender' => 'required|in:male,female',
             'dob' => 'required|date|before:today',
-            'occupation' => 'required|string|max:255',
-            'income' => 'required|numeric|min:0',
-            'num_dependents' => 'required|integer|min:0|max:20',
+            'marital_status' => 'required|in:single,married',
+            'occupation_id' => 'required|exists:occupations,id',
+            'income_range' => 'required|in:below_50m,50m_100m,100m_300m,300m_500m,500m_1b,above_1b',
+            'num_dependents' => 'required|integer|min:0',
+
+            'beneficiary_name' => 'required|string|max:255',
+            'beneficiary_dob' => 'required|date|before:today',
+            'beneficiary_gender' => 'required|in:male,female',
+            'beneficiary_relationship' => 'required|in:adik/kakak kandung,anak kandung,cucu/cicit,nenek/kakek kandung,orang tua kandung,suami/istri,lainnya',
+
             'financial_goals' => 'required|array|min:1',
-            'insurance_period' => 'required|integer|min:1|max:50',
-            'premium_payment_period' => 'required|integer|min:1|max:40',
+            'insurance_period' => 'required|integer|min:1|max:100',
+            'premium_payment_period' => 'required|integer|min:1|max:10',
+            'premium_budget' => 'required|numeric|min:0',
             'overseas_plans' => 'nullable|boolean',
             'has_existing_health_insurance' => 'nullable|boolean',
+            'high_risk_hobby' => 'nullable|boolean',
+
             'height' => 'required|numeric|min:100|max:250',
             'weight' => 'required|numeric|min:30|max:200',
             'weight_change_last_year' => 'nullable|boolean',
@@ -59,7 +69,20 @@ class RecommendationController extends Controller
 
         $validated = $validator->validated();
 
+        $incomeMap = [
+            'below_50m' => 25000000,
+            '50m_100m' => 75000000,
+            '100m_300m' => 200000000,
+            '300m_500m' => 400000000,
+            '500m_1b' => 750000000,
+            'above_1b' => 1500000000
+        ];
+
+        $income = $incomeMap[$validated['income_range']] ?? 0;
+
         try {
+            DB::beginTransaction();
+
             // Create or find customer
             $customer = Customer::firstOrCreate(
                 [
@@ -68,8 +91,9 @@ class RecommendationController extends Controller
                 ],
                 [
                     'gender' => $validated['gender'],
-                    'occupation' => $validated['occupation'],
-                    'income' => $validated['income'],
+                    'marital_status' => $validated['marital_status'],
+                    'occupation_id' => $validated['occupation_id'],
+                    'income_range' => $validated['income_range'],
                     'num_dependents' => $validated['num_dependents'],
                 ]
             );
@@ -79,16 +103,22 @@ class RecommendationController extends Controller
                 'name' => $customer->name,
                 'gender' => $customer->gender,
                 'dob' => $customer->dob->format('Y-m-d'),
-                'occupation' => $customer->occupation,
-                'income' => (float) $customer->income,  // CAST TO FLOAT
-                'num_dependents' => (int) $customer->num_dependents,  // CAST TO INT
+                'marital_status' => $validated['marital_status'],
+                'occupation_id' => (int) $validated['occupation_id'],
+                'income_range' => (float) $validated['income_range'],
+                'income' => (float) $income,
+                'num_dependents' => (int) $customer->num_dependents,
+
+                'beneficiary_relationship' => $validated['beneficiary_relationship'],
                 'financial_goals' => $validated['financial_goals'],
-                'insurance_period' => (int) $validated['insurance_period'],  // CAST TO INT
-                'premium_payment_period' => (int) $validated['premium_payment_period'],  // CAST TO INT
-                'overseas_plans' => (bool) ($validated['overseas_plans'] ?? false),  // CAST TO BOOL
-                'has_existing_health_insurance' => (bool) ($validated['has_existing_health_insurance'] ?? false),  // CAST TO BOOL
-                'height' => (float) $validated['height'],  // CAST TO FLOAT
-                'weight' => (float) $validated['weight'],  // CAST TO FLOAT
+                'insurance_period' => (int) $validated['insurance_period'],
+                'premium_payment_period' => (int) $validated['premium_payment_period'],
+                'premium_budget' => (float) $validated['premium_budget'],
+                'overseas_plans' => (bool) ($validated['overseas_plans'] ?? false),
+                'has_existing_health_insurance' => (bool) ($validated['has_existing_health_insurance'] ?? false),
+                'high_risk_hobby' => (bool) ($validated['high_risk_hobby'] ?? false),
+                'height' => (float) $validated['height'],
+                'weight' => (float) $validated['weight'],
                 'weight_change_last_year' => (bool) ($validated['weight_change_last_year'] ?? false),
                 'smoked_last_year' => (bool) ($validated['smoked_last_year'] ?? false),
                 'hospitalization_last_5_years' => (bool) ($validated['hospitalization_last_5_years'] ?? false),
@@ -106,6 +136,7 @@ class RecommendationController extends Controller
             $cbrResult = $this->executePythonCBR($cbrInput);
 
             if (!$cbrResult['success']) {
+                DB::rollBack();
                 return response()->json([
                     'success' => false,
                     'message' => 'CBR processing failed',
@@ -127,8 +158,14 @@ class RecommendationController extends Controller
                 'financial_goals' => $validated['financial_goals'],
                 'insurance_period' => $validated['insurance_period'],
                 'premium_payment_period' => $validated['premium_payment_period'],
+                'premium_budget' => $validated['premium_budget'],
                 'overseas_plans' => $validated['overseas_plans'] ?? false,
                 'has_existing_health_insurance' => $validated['has_existing_health_insurance'] ?? false,
+                'high_risk_hobby' => $validated['high_risk_hobby'] ?? false,
+                'beneficiary_name' => $validated['beneficiary_name'],
+                'beneficiary_dob' => $validated['beneficiary_dob'],
+                'beneficiary_gender' => $validated['beneficiary_gender'],
+                'beneficiary_relationship' => $validated['beneficiary_relationship'],
                 'height' => $validated['height'],
                 'weight' => $validated['weight'],
                 'bmi' => round($bmi, 2),
@@ -141,15 +178,17 @@ class RecommendationController extends Controller
                 'has_serious_illness' => $validated['has_serious_illness'] ?? false,
                 'receiving_treatment' => $validated['receiving_treatment'] ?? false,
                 'family_medical_history' => $validated['family_medical_history'] ?? false,
-                'is_pregnant' => $cbrInput['is_pregnant'],
+                'is_pregnant' => $validated['is_pregnant'] ?? false,
                 'health_details' => $validated['health_details'],
-                'health_risk_score' => $cbrResult['preprocessed']['health_risk_score'],
+                'health_risk_score' => $cbrResult['health_risk_score'],
                 'feature_vector' => $cbrResult['feature_vector'],
                 'euclidean_score' => $topRecommendation['euclidean_score'],
                 'weighted_euclidean_score' => $topRecommendation['weighted_euclidean_score'],
                 'random_forest_score' => $topRecommendation['random_forest_score'],
                 'algorithm_details' => $cbrResult['algorithm_details'],
             ]);
+
+            DB::commit();
 
             // Return API response
             return response()->json([
@@ -160,9 +199,6 @@ class RecommendationController extends Controller
                     'customer' => [
                         'id' => $customer->id,
                         'name' => $customer->name,
-                        'age' => $customer->age,
-                        'bmi' => round($bmi, 2),
-                        'health_risk_score' => $cbrResult['preprocessed']['health_risk_score']
                     ],
                     'top_recommendation' => [
                         'product_id' => $topRecommendation['product_id'],
@@ -255,16 +291,14 @@ class RecommendationController extends Controller
      */
     public function getHistory(Request $request)
     {
-        $query = CaseModel::with(['customer', 'product', 'agent']);
+        $query = CaseModel::with(['customer', 'customer.occupation', 'product', 'agent']);
 
         // Filter by role
         if (Auth::user()->role === 'agent') {
             $query->where('agent_id', Auth::id());
         } elseif (Auth::user()->role === 'client') {
-            // Get customer IDs associated with this client
-            $customer = Customer::where('name', Auth::user()->name)->first();
-            if ($customer) {
-                $query->where('customer_id', $customer->id);
+            if (Auth::user()->customer_id) {
+                $query->where('customer_id', Auth::user()->customer_id);
             }
         }
 
@@ -291,7 +325,7 @@ class RecommendationController extends Controller
      */
     public function getConsultation($id)
     {
-        $consultation = CaseModel::with(['customer', 'product', 'agent'])->find($id);
+        $consultation = CaseModel::with(['customer', 'customer.occupation', 'product', 'agent'])->find($id);
 
         if (!$consultation) {
             return response()->json([
@@ -313,6 +347,41 @@ class RecommendationController extends Controller
             'data' => $consultation
         ]);
     }
+
+    /**
+     * Get CBR process details
+     */
+    // public function getProcess($id)
+    // {
+    //     $consultation = CaseModel::with(['customer', 'customer.occupation', 'product', 'agent'])->find($id);
+
+    //     if (!$consultation) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Consultation not found'
+    //         ], 404);
+    //     }
+
+    //     // Check permissions
+    //     if (Auth::user()->role === 'agent' && $consultation->agent_id !== Auth::id()) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Unauthorized access'
+    //         ], 403);
+    //     }
+
+    //     $algorithmDetails = $consultation->algorithm_details
+    //         ? json_decode($consultation->algorithm_details, true)
+    //         : null;
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'data' => [
+    //             'consultation' => $consultation,
+    //             'algorithm_details' => $algorithmDetails
+    //         ]
+    //     ]);
+    // }
 
     /**
      * Get statistics

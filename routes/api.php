@@ -14,16 +14,6 @@ use App\Http\Controllers\API\ModelController;
 | These routes use Sanctum authentication and return JSON responses
 */
 
-// Public test endpoint
-Route::get('/health', function () {
-    return response()->json([
-        'status' => 'ok',
-        'message' => 'Insurance CBR API is running',
-        'version' => '1.0.0',
-        'timestamp' => now()->toIso8601String()
-    ]);
-});
-
 Route::post('/login', function (Request $request) {
     $request->validate([
         'email' => 'required|email',
@@ -41,7 +31,6 @@ Route::post('/login', function (Request $request) {
 
     // Delete old tokens
     $user->tokens()->delete();
-
     // Create new token
     $token = $user->createToken('api-token')->plainTextToken;
 

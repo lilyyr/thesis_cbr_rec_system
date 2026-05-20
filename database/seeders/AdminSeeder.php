@@ -38,7 +38,5 @@ class AdminSeeder extends Seeder
             'active' => true,
             'created_by' => $agent->id, // Created by agent
         ]);
-
-        $this->command->info('✓ Created Admin, Agent, and Client accounts');
     }
 }

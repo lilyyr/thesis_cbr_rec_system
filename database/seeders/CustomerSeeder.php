@@ -13,12 +13,6 @@ class CustomerSeeder extends Seeder
     {
         $faker = Faker::create('id_ID'); // Indonesian locale
 
-        $occupations = [
-            'Software Engineer', 'Teacher', 'Doctor', 'Entrepreneur',
-            'Marketing Manager', 'Sales Executive', 'Accountant', 'Civil Servant',
-            'Business Admin', 'Consultant', 'Engineer', 'Designer'
-        ];
-
         $financial_goals_options = [
             'family_protection', 'health', 'retirement', 'education',
             'critical_illness', 'income_protection', 'savings', 'wealth_protection'
@@ -29,14 +23,17 @@ class CustomerSeeder extends Seeder
             $gender = $faker->randomElement(['male', 'female']);
             $age = $faker->numberBetween(25, 60);
             $dob = now()->subYears($age)->format('Y-m-d');
+            $marital_status = $faker->randomElement(['single', 'married']);
+            $income_range = $faker->randomElement(['below_50m','50m_100m','100m_300m','300m_500m','500m_1b','above_1b']);
 
             // Create customer
             $customer = Customer::create([
                 'name' => $faker->name($gender === 'male' ? 'male' : 'female'),
                 'gender' => $gender,
+                'marital_status' => $marital_status,
                 'dob' => $dob,
-                'occupation' => $faker->randomElement($occupations),
-                'income' => $faker->numberBetween(5000000, 50000000),
+                'occupation_id' => $faker->numberBetween(1,207),
+                'income_range' => $income_range,
                 'num_dependents' => $faker->numberBetween(0, 5)
             ]);
 
@@ -86,9 +83,11 @@ class CustomerSeeder extends Seeder
 
                 // Create feature vector
                 $feature_vector = $this->createFeatureVector(
-                    $age, $gender, $customer->income, $customer->num_dependents,
-                    $bmi, $faker->numberBetween(5, 30), $faker->numberBetween(5, 25),
-                    $faker->boolean(30), $faker->boolean(20), $health_risk, $goals
+                    $age, $gender, $marital_status, $income_range, $customer->occupation_id, $customer->num_dependents,
+                    $bmi, $faker->numberBetween(5, 30), $faker->numberBetween(5, 25), $health_risk,
+                    $faker->boolean(30), $faker->boolean(20), $faker->boolean(15), $faker->numberBetween(100000, 10000000),
+                    $faker->randomElement(['adik/kakak kandung','anak kandung,cucu/cicit','nenek/kakek kandung','orang tua kandung','suami/istri','lainnya']),
+                    $goals
                 );
 
                 // Create case
@@ -100,6 +99,10 @@ class CustomerSeeder extends Seeder
                     'premium_payment_period' => $faker->numberBetween(5, 25),
                     'overseas_plans' => $faker->boolean(30),
                     'has_existing_health_insurance' => $faker->boolean(20),
+                    'high_risk_hobby' => $faker->boolean(15),
+                    'premium_budget' => $faker->numberBetween(100000, 10000000),
+                    'beneficiary_name' => $faker->name,
+                    'beneficiary_relationship' => $faker->randomElement(['adik/kakak kandung','anak kandung','cucu/cicit','nenek/kakek kandung','orang tua kandung','suami/istri','lainnya']),
                     'height' => $height,
                     'weight' => $weight,
                     'bmi' => round($bmi, 2),
@@ -113,21 +116,51 @@ class CustomerSeeder extends Seeder
         $this->command->info('✓ Seeded 30 customers with cases');
     }
 
-    private function createFeatureVector($age, $gender, $income, $dependents, $bmi,
-                                        $ins_period, $prem_period, $overseas, $health_ins,
-                                        $health_risk, $goals)
+    private function createFeatureVector($age, $gender, $marital_status, $income_range, $occupation_id, $dependents, $bmi,
+                                        $ins_period, $prem_period, $health_risk, $overseas, $health_ins,
+                                        $high_risk_hobby, $premium_budget, $beneficiary_relationship, $goals)
     {
+
+        $incomeMap = [
+            'below_50m' => 25000000,
+            '50m_100m' => 75000000,
+            '100m_300m' => 200000000,
+            '300m_500m' => 400000000,
+            '500m_1b' => 750000000,
+            'above_1b' => 1500000000
+        ];
+
+        $income = $incomeMap[$income_range] ?? 0;
+
+        $occupation_risk = $occupation_id <= 50 ? 1 : ($occupation_id <= 150 ? 2 : 3);
+
+        $relationship_map = [
+            'orang tua kandung'=> 1.0,
+            'suami/istri'=> 0.9,
+            'anak kandung'=> 0.8,
+            'adik/kakak kandung'=> 0.7,
+            'nenek/kakek kandung'=> 0.6,
+            'cucu/cicit'=> 0.5,
+            'lainnya'=> 0.3
+        ];
+
+
         // Normalize values
         $age_norm = ($age - 18) / (70 - 18);
         $gender_enc = $gender === 'male' ? 1 : 0;
-        $income_norm = $income / 100000000;
+        $marital_enc = $marital_status === 'married' ? 1 : 0;
+        $income_norm = $income / 1500000000;
+        $occupation_risk_norm = ($occupation_risk - 1) / (3 - 1);
         $dep_norm = $dependents / 10;
         $bmi_norm = ($bmi - 15) / (40 - 15);
         $ins_norm = ($ins_period - 1) / (50 - 1);
         $prem_norm = ($prem_period - 1) / (40 - 1);
+        $health_risk_norm = $health_risk / 25;
         $overseas_enc = $overseas ? 1 : 0;
         $health_ins_enc = $health_ins ? 1 : 0;
-        $health_risk_norm = $health_risk / 25;
+        $high_risk_hobby_enc = $high_risk_hobby ? 1 : 0;
+        $premium_budget_norm = $premium_budget / 10000000;
+        $beneficiary_enc = $relationship_map[$beneficiary_relationship] ?? 0.3;
 
         // Goals encoding
         $goal_family = in_array('family_protection', $goals) ? 1 : 0;
@@ -140,8 +173,9 @@ class CustomerSeeder extends Seeder
         $goal_wealth = in_array('wealth_protection', $goals) ? 1 : 0;
 
         return [
-            $age_norm, $gender_enc, $income_norm, $dep_norm, $bmi_norm,
+            $age_norm, $gender_enc, $marital_enc, $income_norm, $occupation_risk_norm, $dep_norm, $bmi_norm,
             $ins_norm, $prem_norm, $overseas_enc, $health_ins_enc, $health_risk_norm,
+            $high_risk_hobby_enc, $premium_budget_norm, $beneficiary_enc,
             $goal_family, $goal_health, $goal_retirement, $goal_education,
             $goal_critical, $goal_income, $goal_savings, $goal_wealth
         ];

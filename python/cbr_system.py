@@ -74,9 +74,6 @@ def normalize_value(value: float, min_val: float, max_val: float) -> float:
     return (value - min_val) / (max_val - min_val)
 
 def preprocess_case(data: Dict) -> Dict:
-    """
-    Preprocess customer data into normalized features
-    """
     # Calculate derived fields
     age = calculate_age(data['dob'])
     bmi = calculate_bmi(data['height'], data['weight'])
@@ -87,19 +84,43 @@ def preprocess_case(data: Dict) -> Dict:
     # Calculate health risk
     health_risk = calculate_health_risk(data)
 
+    conn = connect_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT risk_score FROM occupations WHERE id = %s", (data['occupation_id'],))
+    occupation = cursor.fetchone()
+    occupation_risk = float(occupation['risk_score'])
+    cursor.close()
+    conn.close()
+
     # Normalize features
-    age_norm = normalize_value(age, 18, 70)
+    age_norm = normalize_value(age, 1, 70)
     gender_encoded = 1 if data['gender'] == 'male' else 0
-    income_norm = normalize_value(data['income'], 0, 100000000)
+    marital_encoded = 1 if data['marital_status'] == 'married' else 0
+    income_norm = normalize_value(data['income'], 0, 1500000000)
+    occupation_risk_norm = normalize_value(occupation_risk, 1,3)
     dependents_norm = normalize_value(data['num_dependents'], 0, 10)
     bmi_norm = normalize_value(bmi, 15, 40)
     ins_period_norm = normalize_value(data['insurance_period'], 1, 50)
     prem_period_norm = normalize_value(data['premium_payment_period'], 1, 40)
+    health_risk_norm = normalize_value(health_risk, 0, 25)
     overseas_encoded = 1 if data['overseas_plans'] else 0
     health_ins_encoded = 1 if data['has_existing_health_insurance'] else 0
-    health_risk_norm = normalize_value(health_risk, 0, 25)
+    high_risk_hobby_encoded = 1 if data['high_risk_hobby'] else 0
 
-    # Financial goals (8 binary features)
+    premium_budget_norm = normalize_value(data['premium_budget'], 0, 1000000000)
+
+    relationship_map = {
+        'orang tua kandung': 1.0,
+        'suami/istri': 0.9,
+        'anak kandung': 0.8,
+        'adik/kakak kandung': 0.7,
+        'nenek/kakek kandung': 0.6,
+        'cucu/cicit': 0.5,
+        'lainnya': 0.3
+    }
+
+    beneficiary_encoded = relationship_map.get(data['beneficiary_relationship'], 0.3)
+
     goals = data['financial_goals']
     goal_family = 1 if 'family_protection' in goals else 0
     goal_health = 1 if 'health' in goals else 0
@@ -110,37 +131,29 @@ def preprocess_case(data: Dict) -> Dict:
     goal_savings = 1 if 'savings' in goals else 0
     goal_wealth = 1 if 'wealth_protection' in goals else 0
 
-    # Create 18D feature vector
     feature_vector = [
-        age_norm, gender_encoded, income_norm, dependents_norm, bmi_norm,
-        ins_period_norm, prem_period_norm, overseas_encoded, health_ins_encoded,
-        health_risk_norm,
+        age_norm, gender_encoded, marital_encoded, income_norm, occupation_risk_norm,
+        dependents_norm, bmi_norm, ins_period_norm, prem_period_norm, health_risk_norm,
+        overseas_encoded, health_ins_encoded, high_risk_hobby_encoded,
+        premium_budget_norm, beneficiary_encoded,
         goal_family, goal_health, goal_retirement, goal_education,
         goal_critical, goal_income, goal_savings, goal_wealth
     ]
 
     return {
         'feature_vector': feature_vector,
-        'age': age,
-        'bmi': bmi,
-        'health_risk_score': health_risk,
-        'preprocessed': {
-            'age_normalized': age_norm,
-            'income_normalized': income_norm,
-            'bmi_normalized': bmi_norm,
-            'health_risk_normalized': health_risk_norm
-        }
+        'health_risk_score': health_risk
     }
 
 # SIMILARITY ALGORITHMS
-def euclidean_distance(new_case: List[float], historical_cases: List[float], case_info, k: int = 5) -> List[Dict]:
+def euclidean_distance(new_case: np.ndarray, historical_cases: np.ndarray, case_info, k: int = 5) -> List[Dict]:
     similarities = []
     results = []
 
     for i, hist_case in enumerate(historical_cases):
         # Calculate squared differences for each feature
-        diff_squared = [(new_case[j] - hist_case[j]) ** 2 for j in range(len(new_case))]
-        sum_squared = sum(diff_squared)
+        diff_squared = (new_case - hist_case) ** 2
+        sum_squared = np.sum(diff_squared)
         distance = np.sqrt(sum_squared)
         similarity = 1 / (1 + distance)
 
@@ -165,23 +178,7 @@ def euclidean_distance(new_case: List[float], historical_cases: List[float], cas
 
     return results[:k]
 
-    # new_array = np.array(new_case)
-
-    # for hist in historical:
-    #     hist_array = np.array(hist)
-    #     distance = np.sqrt(np.sum((new_array - hist_array) ** 2))
-    #     similarity = 1 / (1 + distance)
-
-    #     results.append({
-    #         'case_id': hist['case_id'],
-    #         'product_id': hist['product_id'],
-    #         'product_name': hist['product_name'],
-    #         'similarity': float(similarity),
-    #         'distance': float(distance)
-    #     })
-
-def weighted_euclidean(new_case: List[float], historical_cases: List[float], case_info, k: int = 5) -> List[Dict]:
-    # Load weights
+def weighted_euclidean(new_case: np.ndarray, historical_cases: np.ndarray, case_info, k: int = 5) -> List[Dict]:
     conn = connect_db()
     cursor = conn.cursor(dictionary=True)
     cursor.execute("SELECT feature_name, weight FROM weights ORDER BY id")
@@ -190,18 +187,9 @@ def weighted_euclidean(new_case: List[float], historical_cases: List[float], cas
 
     weights = np.array([float(row['weight']) for row in weight_rows])
 
-    weight_details = [
-        {
-        'feature': row['feature_name'],
-        'weight': float(row['weight'])
-        }
-        for row in weight_rows
-    ]
-
     similarities = []
 
     for i, hist_case in enumerate(historical_cases):
-        # Calculate weighted squared differences
         diff = new_case - hist_case
         weighted_diff_squared = weights * (diff ** 2)
         sum_weighted_squared = np.sum(weighted_diff_squared)
@@ -217,7 +205,6 @@ def weighted_euclidean(new_case: List[float], historical_cases: List[float], cas
             'sum_weighted_squared': float(sum_weighted_squared),
             'weighted_differences': [float(d) for d in weighted_diff_squared],
             'historical_vector': case_info[i]['feature_vector'],
-            'weights_used': weight_details
     })
 
     similarities.sort(key=lambda x: x['similarity'], reverse=True)
@@ -231,7 +218,7 @@ def weighted_euclidean(new_case: List[float], historical_cases: List[float], cas
     cursor.close()
     return results[:k]
 
-def random_forest_proximity(new_case: List[float], historical_cases: List[float], case_info, k: int = 5) -> List[Dict]:
+def random_forest_proximity(new_case: np.ndarray, historical_cases: np.ndarray, case_info, k: int = 5) -> List[Dict]:
     script_dir = os.path.dirname(__file__)
     model_path = os.path.join(script_dir, 'models', 'rf_model.pkl')
     cache_path = os.path.join(script_dir, 'models', 'leaf_cache.json')
@@ -245,10 +232,6 @@ def random_forest_proximity(new_case: List[float], historical_cases: List[float]
     with open(cache_path, 'r') as f:
         leaf_cache = json.load(f)
 
-    # # Get new case leaves
-    # new_case_array = np.array([new_case])
-    # new_leaves = rf_model.apply(new_case_array)[0]
-
     # Get leaf nodes for new case
     new_leaves = rf_model.apply(new_case.reshape(1, -1))[0]
 
@@ -256,15 +239,11 @@ def random_forest_proximity(new_case: List[float], historical_cases: List[float]
     leaf_assignments_dict = leaf_cache['leaf_assignments']
     n_trees = rf_model.n_estimators
 
-    # historical_leaves = np.array(leaf_cache['leaf_assignments'])
-    # n_trees = rf_model.n_estimators
-
     similarities = []
 
-    for i, hist in enumerate(historical_cases):  # No enumerate needed!
+    for i, hist in enumerate(historical_cases):
         case_id_str = str(case_info[i]['id'])
 
-        # Check if this case is in the cache
         if case_id_str in leaf_assignments_dict:
             hist_leaves = np.array(leaf_assignments_dict[case_id_str])
         else:
@@ -308,7 +287,6 @@ def random_forest_proximity(new_case: List[float], historical_cases: List[float]
 
 # RESULT AGGREGATION
 def aggregate_results(euclidean: List[Dict], weighted: List[Dict], rf: List[Dict]) -> List[Dict]:
-    """Aggregate results from all three algorithms"""
     product_scores = {}
 
     # Add scores from each algorithm
@@ -396,17 +374,14 @@ def main(input_file: str, output_file: str):
     with open(input_file, 'r') as f:
         input_data = json.load(f)
 
-    # Preprocess
     preprocessed = preprocess_case(input_data)
 
     # Load historical cases
     conn = connect_db()
     cursor = conn.cursor(dictionary=True)
     cursor.execute("""
-        SELECT c.*, cu.gender, cu.dob, cu.occupation, cu.income, cu.num_dependents,
-                p.id as product_id, p.name as product_name
+        SELECT c.*, p.name as product_name
         FROM cases c
-        JOIN customers cu ON c.customer_id = cu.id
         JOIN products p ON c.product_id = p.id
     """)
     historical_cases = cursor.fetchall()
@@ -427,7 +402,6 @@ def main(input_file: str, output_file: str):
     historical_vectors = np.array(historical_vectors)
     new_case_vector = np.array(preprocessed['feature_vector'])
 
-    # Run algorithms
     start = datetime.now()
     euclidean_results = euclidean_distance(new_case_vector, historical_vectors, case_info, k=5)
     euc_time = (datetime.now() - start).total_seconds() * 1000
@@ -440,21 +414,16 @@ def main(input_file: str, output_file: str):
     rf_results = random_forest_proximity(new_case_vector, historical_vectors, case_info, k=5)
     rf_time = (datetime.now() - start).total_seconds() * 1000
 
-    # Aggregate
     print("[6/6] Aggregating...")
     recommendations = aggregate_results(euclidean_results, weighted_results, rf_results)
 
     total_time = euc_time + weighted_time + rf_time
 
-    # Output
     output = {
         'success': True,
-        'preprocessed': {
-            'age': preprocessed['age'],
-            'bmi': preprocessed['bmi'],
-            'health_risk_score': preprocessed['health_risk_score']
-        },
+        'input_data': input_data,
         'feature_vector': preprocessed['feature_vector'],
+        'health_risk_score': preprocessed['health_risk_score'],
         'recommendations': recommendations,
         'execution_time': {
             'euclidean': round(euc_time, 2),
@@ -462,22 +431,21 @@ def main(input_file: str, output_file: str):
             'random_forest': round(rf_time, 2),
             'total': round(total_time, 2)
         },
-        'input_data': input_data,
         'algorithm_details': {
             'euclidean': {
                 'top_5_matches': euclidean_results,
-                'formula': 'd(x,y) = sqrt(sum((xi - yi)^2))',
-                'similarity_formula': 'similarity = 1 / (1 + distance)',
+                # 'formula': 'd(x,y) = sqrt(sum((xi - yi)^2))',
+                # 'similarity_formula': 'similarity = 1 / (1 + distance)',
             },
             'weighted_euclidean': {
                 'top_5_matches': weighted_results,
-                'formula': 'dw(x,y) = sqrt(sum(wi * (xi - yi)^2))',
-                'similarity_formula': 'similarity = 1 / (1 + weighted_distance)',
+                # 'formula': 'dw(x,y) = sqrt(sum(wi * (xi - yi)^2))',
+                # 'similarity_formula': 'similarity = 1 / (1 + weighted_distance)',
                 'weights_used': get_feature_weights()
             },
             'random_forest': {
                 'top_5_matches': rf_results,
-                'proximity_formula': 'proximity = matching_leaves / total_trees',
+                # 'proximity_formula': 'proximity = matching_leaves / total_trees',
                 'model_info': {
                     'n_estimators': 100,
                     'max_depth': 10,

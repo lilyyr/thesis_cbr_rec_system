@@ -19,7 +19,6 @@ Route::get('/demo', function () {
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
-    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
@@ -54,12 +53,19 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
 // Agent & Admin routes (can use CBR system)
 Route::middleware(['auth', 'role:admin,agent'])->group(function () {
-    Route::get('/consultations', [ConsultationController::class, 'index'])->name('consultations.index');
-    Route::get('/consultations/create', [ConsultationController::class, 'create'])->name('consultations.create');
-    Route::post('/consultations', [ConsultationController::class, 'store'])->name('consultations.store');
-    Route::get('/consultations/{id}', [ConsultationController::class, 'show'])->name('consultations.show');
-    Route::get('/consultations/{id}/process', [ConsultationController::class, 'process'])->name('consultations.process');
-    Route::post('consultations/{id}/generate-trees', [ConsultationController::class, 'generateTreeVisualizations'])->name('consultations.generate-trees');
+    // Route::get('/consultations', [ConsultationController::class, 'index'])->name('consultations.index');
+    // Route::get('/consultations/create', [ConsultationController::class, 'create'])->name('consultations.create');
+    // // Route::post('/consultations', [ConsultationController::class, 'store'])->name('consultations.store');
+    // Route::get('/consultations/{id}', [ConsultationController::class, 'show'])->name('consultations.show');
+    // Route::get('/consultations/{id}/process', [ConsultationController::class, 'process'])->name('consultations.process');
+    // Route::post('consultations/{id}/generate-trees', [ConsultationController::class, 'generateTreeVisualizations'])->name('consultations.generate-trees');
+
+    Route::get('/consultations', function() {return view('consultations.index');})->name('consultations.index');
+    Route::get('/consultations/create', function() {
+        $occupations = \App\Models\Occupation::orderBy('name')->get();
+        return view('consultations.create', compact('occupations'));})->name('consultations.create');
+    Route::get('/consultations/{id}', function($id) {return view('consultations.show', ['consultationId' => $id]);})->name('consultations.show');
+    Route::get('/consultations/{id}/process', function($id) {return view('consultations.process', ['consultationId' => $id]);})->name('consultations.process');
 
     // Client management
     Route::resource('clients', ClientController::class);

@@ -20,14 +20,13 @@ class DatabaseSeeder extends Seeder
 
         // Seed in order
         $this->call([
-            AdminSeeder::class,      // Creates admin, agent, client users
-            ProductSeeder::class,     // Creates 6 products
-            WeightSeeder::class,      // Creates 18 feature weights
-            CustomerSeeder::class,    // Creates 30 customers with cases
+            AdminSeeder::class,
+            ProductSeeder::class,
+            WeightSeeder::class,
+            OccupationSeeder::class,
+            CustomerSeeder::class
         ]);
 
-        $this->command->info('✓ Database seeded successfully!');
-        $this->command->info('');
         $this->command->info('Default Accounts:');
         $this->command->info('  Admin: admin@insurance.com / password123');
         $this->command->info('  Agent: agent@insurance.com / password234');
