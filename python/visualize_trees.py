@@ -41,7 +41,7 @@ def visualize_trees(case_id, num_trees=3):
             try:
                 conn = mysql.connector.connect(
                     host='localhost',
-                    database='rec_ins_cbr',
+                    database='rec_ins_cbr2',
                     user='root',
                     password=''
                 )
