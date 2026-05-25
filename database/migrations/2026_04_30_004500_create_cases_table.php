@@ -17,9 +17,9 @@ return new class extends Migration
             $table->foreignId('agent_id')->nullable()->constrained('users')->onDelete('set null');
 
             // Financial Goals & Insurance Needs
-            $table->json('financial_goals'); // Array of goals
-            $table->integer('insurance_period'); // Years
-            $table->integer('premium_payment_period'); // Years
+            $table->json('financial_goals');
+            $table->integer('insurance_period');
+            $table->integer('premium_payment_period'); 
             $table->boolean('overseas_plans')->default(false);
             $table->boolean('has_existing_health_insurance')->default(false);
 

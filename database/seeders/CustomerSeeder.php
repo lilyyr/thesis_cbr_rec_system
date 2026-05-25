@@ -100,7 +100,7 @@ class CustomerSeeder extends Seeder
                     'overseas_plans' => $faker->boolean(30),
                     'has_existing_health_insurance' => $faker->boolean(20),
                     'high_risk_hobby' => $faker->boolean(15),
-                    'premium_budget' => $faker->numberBetween(100000, 10000000),
+                    'nominal_received' => $faker->numberBetween(100000, 10000000),
                     'beneficiary_name' => $faker->name,
                     'beneficiary_relationship' => $faker->randomElement(['adik/kakak kandung','anak kandung','cucu/cicit','nenek/kakek kandung','orang tua kandung','suami/istri','lainnya']),
                     'height' => $height,
@@ -118,7 +118,7 @@ class CustomerSeeder extends Seeder
 
     private function createFeatureVector($age, $gender, $marital_status, $income_range, $occupation_id, $dependents, $bmi,
                                         $ins_period, $prem_period, $health_risk, $overseas, $health_ins,
-                                        $high_risk_hobby, $premium_budget, $beneficiary_relationship, $goals)
+                                        $high_risk_hobby, $nominal_received, $beneficiary_relationship, $goals)
     {
 
         $incomeMap = [
@@ -159,7 +159,7 @@ class CustomerSeeder extends Seeder
         $overseas_enc = $overseas ? 1 : 0;
         $health_ins_enc = $health_ins ? 1 : 0;
         $high_risk_hobby_enc = $high_risk_hobby ? 1 : 0;
-        $premium_budget_norm = $premium_budget / 10000000;
+        $nominal_received_norm = $nominal_received / 10000000;
         $beneficiary_enc = $relationship_map[$beneficiary_relationship] ?? 0.3;
 
         // Goals encoding
@@ -175,7 +175,7 @@ class CustomerSeeder extends Seeder
         return [
             $age_norm, $gender_enc, $marital_enc, $income_norm, $occupation_risk_norm, $dep_norm, $bmi_norm,
             $ins_norm, $prem_norm, $overseas_enc, $health_ins_enc, $health_risk_norm,
-            $high_risk_hobby_enc, $premium_budget_norm, $beneficiary_enc,
+            $high_risk_hobby_enc, $nominal_received_norm, $beneficiary_enc,
             $goal_family, $goal_health, $goal_retirement, $goal_education,
             $goal_critical, $goal_income, $goal_savings, $goal_wealth
         ];

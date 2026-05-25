@@ -8,6 +8,7 @@ use App\Models\Weight;
 use App\Models\CaseModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
@@ -272,4 +273,63 @@ class AdminController extends Controller
                 ->with('error', 'Model training failed: ' . implode("\n", $output));
         }
     }
+
+    public function algorithmTesting()
+    {
+        $testCaseCount = DB::table('test_case')->count();
+
+        $latestResults = DB::table('algorithm_test_results')
+            ->orderBy('test_run_date', 'desc')
+            ->limit(10)
+            ->get();
+
+        $comparisonData = DB::table('algorithm_test_results')
+            ->select('algorithm_name')
+            ->selectRaw('AVG(precision) as avg_precision')
+            ->selectRaw('AVG(recall) as avg_recall')
+            ->selectRaw('AVG(f1_score) as avg_f1')
+            ->selectRaw('AVG(accuracy) as avg_accuracy')
+            ->selectRaw('AVG(precision_at_5) as avg_p_at_5')
+            ->selectRaw('AVG(mrr) as avg_mrr')
+            ->selectRaw('AVG(avg_execution_time_ms) as avg_time')
+            ->groupBy('algorithm_name')
+            ->get();
+
+        return view('admin.algorithm-testing', compact(
+            'testCaseCount',
+            'latestResults',
+            'comparisonData'
+        ));
+    }
+
+    public function runTests()
+    {
+        $pythonPath = env('PYTHON_PATH', 'python');
+        $scriptPath = base_path('python/test_algorithms.py');
+
+        $command = sprintf('%s %s 2>&1', $pythonPath, escapeshellarg($scriptPath));
+
+        exec($command, $output, $returnCode);
+
+        if ($returnCode !== 0) {
+            return redirect()->back()->with('error', 'Testing failed: ' . implode("\n", $output));
+        }
+
+        return redirect()->back()->with('success', 'Algorithm testing completed successfully!');
+    }
+
+    public function testResults($id)
+    {
+        $result = DB::table('algorithm_test_results')->find($id);
+
+        if (!$result) {
+            abort(404);
+        }
+
+        $result->detailed_results = json_decode($result->detailed_results, true);
+
+        return view('admin.test-results', compact('result'));
+    }
+
+
 }

@@ -7,13 +7,8 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\AdminController;
 
 // Public routes
-Route::get('/', function () {
-    return view('home');
-})->name('home');
-
-Route::get('/demo', function () {
-    return view('demo');
-})->name('demo');
+Route::get('/', function () {return view('home');})->name('home');
+Route::get('/job-application', function () {return view('jobappli');})->name('jobappli');
 
 // Authentication routes
 Route::middleware('guest')->group(function () {
@@ -49,6 +44,10 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     // Model training
     Route::post('/train-model', [AdminController::class, 'trainModel'])->name('train-model');
+
+    Route::get('/algorithm-testing', [AdminController::class, 'algorithmTesting'])->name('algorithm-testing');
+    Route::post('/algorithm-testing/run', [AdminController::class, 'runTests'])->name('algorithm-testing.run');
+    Route::get('/algorithm-testing/results/{id}', [AdminController::class, 'testResults'])->name('algorithm-testing.results');
 });
 
 // Agent & Admin routes (can use CBR system)

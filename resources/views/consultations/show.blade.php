@@ -241,12 +241,12 @@ function displayConsultation(consultation) {
 
                 <div>
                     <p class="text-sm text-gray-600 mb-1">Premium Budget</p>
-                    <p class="text-lg font-semibold text-gray-900">Rp ${(consultation.premium_budget || 0).toLocaleString('id-ID')}</p>
+                    <p class="text-lg font-semibold text-gray-900">Rp ${(consultation.nominal_received || 0).toLocaleString('id-ID')}</p>
                 </div>
 
                 <div>
                     <p class="text-sm text-gray-600 mb-1">Overseas Plans</p>
-                    <p class="text-lg font-semibold text-gray-900">${consultation.overseas_plans ? '✓ Yes' : '✗ No'}</p>
+                    <p class="text-lg font-semibold text-gray-900">${consultation.overseas_medical_plans ? '✓ Yes' : '✗ No'}</p>
                 </div>
 
                 <div>

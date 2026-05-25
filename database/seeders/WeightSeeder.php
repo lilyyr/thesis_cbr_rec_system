@@ -80,7 +80,7 @@ class WeightSeeder extends Seeder
                 'description' => 'High risk hobby'
             ],
             [
-                'feature_name' => 'premium_budget',
+                'feature_name' => 'nominal_received',
                 'weight' => 0.10,
                 'description' => 'Premium budget'
             ],

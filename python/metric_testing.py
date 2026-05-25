@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-Algorithm Testing Script
-Tests CBR algorithms and calculates performance metrics
-"""
-
 import sys
 import json
 import time
@@ -11,16 +5,14 @@ import mysql.connector
 from datetime import datetime
 import numpy as np
 from cbr_system import (
-    load_all_cases,
     preprocess_case,
-    euclidean_similarity,
-    weighted_euclidean_similarity,
+    euclidean_distance,
+    weighted_euclidean,
     random_forest_proximity,
     aggregate_results
 )
 
 def get_db_connection():
-    """Create database connection"""
     return mysql.connector.connect(
         host='localhost',
         user='root',
@@ -28,29 +20,52 @@ def get_db_connection():
         database='rec_ins_cbr'
     )
 
-def load_test_cases(cursor):
-    """Load test cases with ground truth"""
+def load_all_cases(cursor):
     cursor.execute("""
-        SELECT
-            tc.id,
-            tc.customer_id,
-            tc.correct_product_id,
-            tc.feature_vector,
-            c.name as customer_name,
-            c.gender,
-            c.dob,
-            c.marital_status,
-            c.occupation_id,
-            c.income_range,
-            c.num_dependents,
-            p.name as correct_product_name
-        FROM test_cases tc
-        JOIN customers c ON tc.customer_id = c.customer_id
+        SELECT c.id, c.customer_id, c.product_id, c.feature_vector, p.name as product_name
+        FROM cases c
+        JOIN products p ON c.product_id = p.id
+        ORDER BY c.id
+    """)
+
+    cases = cursor.fetchall()
+
+    result = []
+    for case in cases:
+        result.append({
+            'id': case[0],
+            'customer_id': case[1],
+            'product_id': case[2],
+            'product_name': case[4],
+            'feature_vector': json.loads(case[3])
+        })
+
+    return result
+
+# this is wrong, i need the input to be like a normal case
+def load_test_cases(cursor):
+    cursor.execute("""
+        SELECT tc.*, p.name as correct_product_name
+        FROM test_case tc
         JOIN products p ON tc.correct_product_id = p.id
     """)
 
     test_cases = []
-    for row in cursor.fetchall():
+    for case in cursor.fetchall():
+        incomeMap = {
+            'below_50m': 25000000,
+            '50m_100m': 75000000,
+            '100m_300m': 200000000,
+            '300m_500m': 400000000,
+            '500m_1b': 750000000,
+            'above_1b': 1500000000
+        }
+
+        income = incomeMap.get(case['income_range'], 0)
+
+        financial_goals = json.loads(case['financlail_goals'])
+        coverage_regions = json.loads(case['coverage_regions'])
+
         test_cases.append({
             'id': row[0],
             'customer_id': row[1],
@@ -68,23 +83,15 @@ def load_test_cases(cursor):
 
     return test_cases
 
-def calculate_confusion_matrix(predictions, k=5):
-    """
-    Calculate TP, FP, TN, FN for all predictions
-
-    predictions: list of dicts with keys:
-        - correct_product_id: ground truth
-        - top_k_predictions: list of (product_id, score) tuples
-        - all_products: list of all possible product IDs
-    """
+def calculate_confusion_matrix(predictions):
     tp = 0  # Correct product in top-1
     fp = 0  # Wrong product in top-1
-    tn = 0  # Irrelevant products correctly excluded
-    fn = 0  # Correct product not in top-K
+    tn = 0  # Irrelevant products correctly excluded (not in top 1)
+    fn = 0  # Correct product not in top-1
 
     for pred in predictions:
         correct_id = pred['correct_product_id']
-        top_k_ids = [p[0] for p in pred['top_k_predictions'][:k]]
+        top_k_ids = [p[0] for p in pred['top_k_predictions']]
         all_products = pred['all_products']
 
         # Check top-1 prediction
@@ -93,52 +100,46 @@ def calculate_confusion_matrix(predictions, k=5):
         else:
             fp += 1
 
-        # Check if correct product is in top-K
-        if correct_id not in top_k_ids:
-            fn += 1
-
-        # Count true negatives (irrelevant products not in top-K)
-        irrelevant_products = [p for p in all_products if p != correct_id]
-        for product_id in irrelevant_products:
-            if product_id not in top_k_ids:
+        incorrect_products = [p for p in all_products if p != correct_id]
+        for product_id in incorrect_products:
+            if product_id != top_k_ids[0]:
                 tn += 1
+            else:
+                fn += 1
 
     return tp, fp, tn, fn
 
-def calculate_precision_at_k(predictions, k=5):
-    """
-    Calculate Precision@K: What proportion of top-K recommendations are relevant?
-    """
-    precisions = []
+# def calculate_precision_at_k(predictions, k=5):
+#     """
+#     Calculate Precision@K: What proportion of top-K recommendations are relevant?
+#     """
+#     precisions = []
 
-    for pred in predictions:
-        correct_id = pred['correct_product_id']
-        top_k_ids = [p[0] for p in pred['top_k_predictions'][:k]]
+#     for pred in predictions:
+#         correct_id = pred['correct_product_id']
+#         top_k_ids = [p[0] for p in pred['top_k_predictions'][:k]]
 
-        # In our case, only 1 product is "relevant" (the correct one)
-        relevant_in_k = 1 if correct_id in top_k_ids else 0
-        precision_at_k = relevant_in_k / k
-        precisions.append(precision_at_k)
+#         # In our case, only 1 product is "relevant" (the correct one)
+#         relevant_in_k = 1 if correct_id in top_k_ids else 0
+#         precision_at_k = relevant_in_k / k
+#         precisions.append(precision_at_k)
 
-    return np.mean(precisions)
+#     return np.mean(precisions)
 
 def calculate_mrr(predictions):
-    """
-    Calculate Mean Reciprocal Rank
-    MRR = Average of (1 / rank of first correct result)
-    """
+    # MRR = Average of (1 / rank of first correct result)
     reciprocal_ranks = []
 
-    for pred in predictions:
+    for pred in prediction:
         correct_id = pred['correct_product_id']
         top_k_ids = [p[0] for p in pred['top_k_predictions']]
 
-        # Find rank of correct product (1-indexed)
-        try:
-            rank = top_k_ids.index(correct_id) + 1
-            reciprocal_ranks.append(1.0 / rank)
-        except ValueError:
-            # Correct product not in recommendations
+        for product_id in top_k_ids:
+            if product_id == correct_id:
+                rank = top_k_ids.index(product_id) + 1
+                reciprocal_ranks.append(1.0 / rank)
+
+        if correct_id not in top_k_ids:
             reciprocal_ranks.append(0.0)
 
     return np.mean(reciprocal_ranks)
@@ -152,8 +153,9 @@ def test_algorithm(algorithm_name, test_cases, cursor):
     print(f"{'='*60}")
 
     # Load training cases
-    training_cases = load_all_cases(cursor)
-    print(f"Loaded {len(training_cases)} training cases")
+    training_info = load_all_cases(cursor)
+    training_vectors = np.array([case['feature_vector'] for case in training_info])
+    print(f"Loaded {len(training_info)} training cases")
 
     # Get all product IDs
     cursor.execute("SELECT id FROM products")
@@ -166,84 +168,48 @@ def test_algorithm(algorithm_name, test_cases, cursor):
         print(f"Testing case {i}/{len(test_cases)}: {test_case['customer_name']}")
 
         # Preprocess test case
-        new_vector = test_case['feature_vector']
+        new_vector = np.array(test_case['feature_vector'])
 
         # Run algorithm and measure time
         start_time = time.time()
 
         if algorithm_name == 'euclidean':
-            similarities = euclidean_similarity(new_vector, training_cases)
+            similarities = euclidean_distance(new_vector, training_vectors, training_info)
         elif algorithm_name == 'weighted_euclidean':
-            similarities = weighted_euclidean_similarity(new_vector, training_cases, cursor)
+            similarities = weighted_euclidean(new_vector, training_vectors, training_info)
         elif algorithm_name == 'random_forest':
-            similarities = random_forest_proximity(new_vector, training_cases)
+            similarities = random_forest_proximity(new_vector, training_vectors, training_info)
         else:
             raise ValueError(f"Unknown algorithm: {algorithm_name}")
 
         execution_time = (time.time() - start_time) * 1000  # Convert to ms
         execution_times.append(execution_time)
 
-        # Get top recommendations
-        top_recommendations = aggregate_results(
-            similarities['euclidean'] if algorithm_name == 'euclidean' else [],
-            similarities['weighted'] if algorithm_name == 'weighted_euclidean' else [],
-            similarities['random_forest'] if algorithm_name == 'random_forest' else [],
-            cursor
-        )
-
-        # Actually, we need to aggregate based on which algorithm we're testing
-        # Let me fix this - we should use the specific algorithm's results
-        if algorithm_name == 'euclidean':
-            sorted_cases = sorted(similarities['euclidean'], key=lambda x: x[1], reverse=True)
-        elif algorithm_name == 'weighted_euclidean':
-            sorted_cases = sorted(similarities['weighted'], key=lambda x: x[1], reverse=True)
-        else:  # random_forest
-            sorted_cases = sorted(similarities['random_forest'], key=lambda x: x[1], reverse=True)
-
-        # Get product recommendations
-        product_scores = {}
-        for case_id, similarity in sorted_cases[:20]:  # Top 20 similar cases
-            # Get product for this case
-            cursor.execute("SELECT product_id FROM cases WHERE id = %s", (case_id,))
-            product_id = cursor.fetchone()[0]
-
-            if product_id not in product_scores:
-                product_scores[product_id] = []
-            product_scores[product_id].append(similarity)
-
-        # Average scores per product
-        product_avg_scores = {
-            pid: np.mean(scores) for pid, scores in product_scores.items()
-        }
-
-        # Sort products by average score
-        sorted_products = sorted(
-            product_avg_scores.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )
+        #find out if we even need this as compared to using similarities[0]['product_id']
+        results = [(s['product_id'], s['product_name'], s['similarity']) for s in similarities]
 
         predictions.append({
             'test_case_id': test_case['id'],
+            'customer_id': test_case['customer_id'],
             'customer_name': test_case['customer_name'],
             'correct_product_id': test_case['correct_product_id'],
             'correct_product_name': test_case['correct_product_name'],
-            'top_k_predictions': sorted_products,
+            'top_k_predictions': results,
             'all_products': all_product_ids,
-            'top_1_product_id': sorted_products[0][0] if sorted_products else None,
+            'top_1_product_id': results[0][0] if results else None,
+            'algorithm_details': similarities['algorithm_details'] if 'algorithm_details' in similarities else None,
             'execution_time_ms': execution_time
         })
 
-        # Print immediate result
-        top_1_correct = sorted_products[0][0] == test_case['correct_product_id'] if sorted_products else False
-        print(f"  → Predicted: Product #{sorted_products[0][0] if sorted_products else 'None'}")
-        print(f"  → Actual: Product #{test_case['correct_product_id']} ({test_case['correct_product_name']})")
+        top_1_correct = results[0][0] == test_case['correct_product_id'] if results else False
+        print(f"  → Predicted: Product #{results[0][0] if results else 'Null'} {results[0][1] if results else 'None'}")
+        print(f"  → Actual: Product #{test_case['correct_product_id']} {test_case['correct_product_name']}")
         print(f"  → Result: {'✓ CORRECT' if top_1_correct else '✗ WRONG'}")
         print(f"  → Execution time: {execution_time:.2f}ms\n")
 
     # Calculate confusion matrix
     print("\nCalculating metrics...")
-    tp, fp, tn, fn = calculate_confusion_matrix(predictions, k=5)
+    tp, fp, tn, fn = calculate_confusion_matrix(predictions)
 
     print(f"\nConfusion Matrix:")
     print(f"  True Positives (TP):  {tp}")
@@ -252,12 +218,12 @@ def test_algorithm(algorithm_name, test_cases, cursor):
     print(f"  False Negatives (FN): {fn}")
 
     # Calculate metrics
-    precision = tp / (tp + fp) if (tp + fp) > 0 else 0
-    recall = tp / (tp + fn) if (tp + fn) > 0 else 0
-    f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
-    accuracy = (tp + tn) / (tp + tn + fp + fn) if (tp + tn + fp + fn) > 0 else 0
+    precision = tp / (tp + fp)
+    recall = tp / (tp + fn)
+    f1_score = 2 * (precision * recall) / (precision + recall)
+    accuracy = (tp + tn) / (tp + tn + fp + fn)
 
-    precision_at_5 = calculate_precision_at_k(predictions, k=5)
+    # precision_at_5 = calculate_precision_at_k(predictions, k=5)
     mrr = calculate_mrr(predictions)
 
     avg_execution_time = np.mean(execution_times)
@@ -282,7 +248,7 @@ def test_algorithm(algorithm_name, test_cases, cursor):
         'false_positives': fp,
         'true_negatives': tn,
         'false_negatives': fn,
-        'precision': precision,
+        'precision_score': precision,
         'recall': recall,
         'f1_score': f1_score,
         'accuracy': accuracy,
@@ -299,7 +265,7 @@ def save_results(results, cursor, conn):
         INSERT INTO algorithm_test_results (
             algorithm_name, test_run_date, total_test_cases,
             true_positives, false_positives, true_negatives, false_negatives,
-            precision, recall, f1_score, accuracy, precision_at_5, mrr,
+            precision_score, recall, f1_score, accuracy, precision_at_5, mrr,
             avg_execution_time_ms, total_execution_time_ms, detailed_results,
             created_at, updated_at
         ) VALUES (
@@ -313,7 +279,7 @@ def save_results(results, cursor, conn):
         results['false_positives'],
         results['true_negatives'],
         results['false_negatives'],
-        results['precision'],
+        results['precision_score'],
         results['recall'],
         results['f1_score'],
         results['accuracy'],

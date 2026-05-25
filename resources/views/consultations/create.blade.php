@@ -183,16 +183,16 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Premium Budget (Rp)</label>
-                    <input type="number" name="premium_budget" min="0" required
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Nominal Received (Rp)</label>
+                    <input type="number" name="nominal_received" min="0" required
                            class="w-full px-4 py-2 border border-gray-300 rounded focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600">
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                 <label class="flex items-center">
-                    <input type="checkbox" name="overseas_plans" value="1" class="mr-2">
-                    Plans to travel/work overseas
+                    <input type="checkbox" name="overseas_medical_plans" value="1" class="mr-2">
+                    Overseas plans for medical purposes
                 </label>
                 <label class="flex items-center">
                     <input type="checkbox" name="has_existing_health_insurance" value="1" class="mr-2">
@@ -311,7 +311,7 @@ document.getElementById('consultation-form').addEventListener('submit', async fu
 
     // First, set all boolean fields to false by default
     const booleanFields = [
-        'overseas_plans', 'has_existing_health_insurance', 'high_risk_hobby',
+        'overseas_medical_plans', 'has_existing_health_insurance', 'high_risk_hobby',
         'weight_change_last_year', 'smoked_last_year', 'hospitalization_last_5_years',
         'lab_tests_last_5_years', 'accident_poisoning_last_5_years', 'has_disability',
         'has_serious_illness', 'receiving_treatment', 'family_medical_history', 'is_pregnant'
@@ -347,7 +347,7 @@ document.getElementById('consultation-form').addEventListener('submit', async fu
     // }
 
     // Convert checkboxes to boolean
-    // const booleanFields = ['overseas_plans', 'has_existing_health_insurance', 'high_risk_hobby',
+    // const booleanFields = ['overseas_medical_plans', 'has_existing_health_insurance', 'high_risk_hobby',
     //     'weight_change_last_year', 'smoked_last_year', 'hospitalization_last_5_years',
     //     'lab_tests_last_5_years', 'accident_poisoning_last_5_years', 'has_disability',
     //     'has_serious_illness', 'receiving_treatment', 'family_medical_history', 'is_pregnant'];
@@ -358,7 +358,7 @@ document.getElementById('consultation-form').addEventListener('submit', async fu
 
     // Convert numeric strings to numbers
     const numericFields = ['occupation_id', 'num_dependents', 'insurance_period',
-            'premium_payment_period', 'premium_budget', 'height', 'weight'];
+            'premium_payment_period', 'nominal_received', 'height', 'weight'];
     numericFields.forEach(field => {
         if (data[field]) {
             data[field] = parseFloat(data[field]);

@@ -39,8 +39,8 @@ class RecommendationController extends Controller
             'financial_goals' => 'required|array|min:1',
             'insurance_period' => 'required|integer|min:1|max:100',
             'premium_payment_period' => 'required|integer|min:1|max:10',
-            'premium_budget' => 'required|numeric|min:0',
-            'overseas_plans' => 'nullable|boolean',
+            'nominal_received' => 'required|numeric|min:0',
+            'overseas_medical_plans' => 'nullable|boolean',
             'has_existing_health_insurance' => 'nullable|boolean',
             'high_risk_hobby' => 'nullable|boolean',
 
@@ -113,8 +113,8 @@ class RecommendationController extends Controller
                 'financial_goals' => $validated['financial_goals'],
                 'insurance_period' => (int) $validated['insurance_period'],
                 'premium_payment_period' => (int) $validated['premium_payment_period'],
-                'premium_budget' => (float) $validated['premium_budget'],
-                'overseas_plans' => (bool) ($validated['overseas_plans'] ?? false),
+                'nominal_received' => (float) $validated['nominal_received'],
+                'overseas_medical_plans' => (bool) ($validated['overseas_medical_plans'] ?? false),
                 'has_existing_health_insurance' => (bool) ($validated['has_existing_health_insurance'] ?? false),
                 'high_risk_hobby' => (bool) ($validated['high_risk_hobby'] ?? false),
                 'height' => (float) $validated['height'],
@@ -144,13 +144,10 @@ class RecommendationController extends Controller
                 ], 500);
             }
 
-            // Get top recommendation
             $topRecommendation = $cbrResult['recommendations'][0];
 
-            // Calculate BMI
             $bmi = $validated['weight'] / (($validated['height'] / 100) ** 2);
 
-            // Save consultation case
             $case = CaseModel::create([
                 'customer_id' => $customer->id,
                 'product_id' => $topRecommendation['product_id'],
@@ -158,8 +155,8 @@ class RecommendationController extends Controller
                 'financial_goals' => $validated['financial_goals'],
                 'insurance_period' => $validated['insurance_period'],
                 'premium_payment_period' => $validated['premium_payment_period'],
-                'premium_budget' => $validated['premium_budget'],
-                'overseas_plans' => $validated['overseas_plans'] ?? false,
+                'nominal_received' => $validated['nominal_received'],
+                'overseas_medical_plans' => $validated['overseas_medical_plans'] ?? false,
                 'has_existing_health_insurance' => $validated['has_existing_health_insurance'] ?? false,
                 'high_risk_hobby' => $validated['high_risk_hobby'] ?? false,
                 'beneficiary_name' => $validated['beneficiary_name'],
@@ -190,7 +187,13 @@ class RecommendationController extends Controller
 
             DB::commit();
 
-            // Return API response
+            $feature_vector_names = ['age_norm', 'gender_encoded', 'marital_encoded', 'income_norm', 'occupation_risk_norm',
+            'dependents_norm', 'bmi_norm', 'ins_period_norm', 'prem_period_norm', 'health_risk_norm',
+            'overseas_encoded', 'health_ins_encoded', 'high_risk_hobby_encoded',
+            'nominal_received_norm', 'beneficiary_encoded',
+            'goal_family', 'goal_health', 'goal_retirement', 'goal_education',
+            'goal_critical', 'goal_income', 'goal_savings', 'goal_wealth'];
+
             return response()->json([
                 'success' => true,
                 'message' => 'Recommendation generated successfully',
@@ -211,6 +214,7 @@ class RecommendationController extends Controller
                     ],
                     'all_recommendations' => $cbrResult['recommendations'],
                     'execution_time' => $cbrResult['execution_time'],
+                    'feature_names' => $feature_vector_names,
                     'feature_vector' => $cbrResult['feature_vector']
                 ],
                 'links' => [
@@ -334,7 +338,6 @@ class RecommendationController extends Controller
             ], 404);
         }
 
-        // Check permissions
         if (Auth::user()->role === 'agent' && $consultation->agent_id !== Auth::id()) {
             return response()->json([
                 'success' => false,
@@ -342,9 +345,19 @@ class RecommendationController extends Controller
             ], 403);
         }
 
+        $feature_vector_names = ['age_norm', 'gender_encoded', 'marital_encoded', 'income_norm', 'occupation_risk_norm',
+            'dependents_norm', 'bmi_norm', 'ins_period_norm', 'prem_period_norm', 'health_risk_norm',
+            'overseas_encoded', 'health_ins_encoded', 'high_risk_hobby_encoded',
+            'nominal_received_norm', 'beneficiary_encoded',
+            'goal_family', 'goal_health', 'goal_retirement', 'goal_education',
+            'goal_critical', 'goal_income', 'goal_savings', 'goal_wealth'];
+
         return response()->json([
             'success' => true,
-            'data' => $consultation
+            'data' => [
+                $consultation,
+                'feature_vector_names' => $feature_vector_names,
+            ]
         ]);
     }
 

@@ -103,11 +103,11 @@ def preprocess_case(data: Dict) -> Dict:
     ins_period_norm = normalize_value(data['insurance_period'], 1, 50)
     prem_period_norm = normalize_value(data['premium_payment_period'], 1, 40)
     health_risk_norm = normalize_value(health_risk, 0, 25)
-    overseas_encoded = 1 if data['overseas_plans'] else 0
+    overseas_encoded = 1 if data['overseas_medical_plans'] else 0
     health_ins_encoded = 1 if data['has_existing_health_insurance'] else 0
     high_risk_hobby_encoded = 1 if data['high_risk_hobby'] else 0
 
-    premium_budget_norm = normalize_value(data['premium_budget'], 0, 1000000000)
+    nominal_received_norm = normalize_value(data['nominal_received'], 0, 1000000000)
 
     relationship_map = {
         'orang tua kandung': 1.0,
@@ -135,7 +135,7 @@ def preprocess_case(data: Dict) -> Dict:
         age_norm, gender_encoded, marital_encoded, income_norm, occupation_risk_norm,
         dependents_norm, bmi_norm, ins_period_norm, prem_period_norm, health_risk_norm,
         overseas_encoded, health_ins_encoded, high_risk_hobby_encoded,
-        premium_budget_norm, beneficiary_encoded,
+        nominal_received_norm, beneficiary_encoded,
         goal_family, goal_health, goal_retirement, goal_education,
         goal_critical, goal_income, goal_savings, goal_wealth
     ]

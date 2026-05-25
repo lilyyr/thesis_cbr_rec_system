@@ -27,7 +27,7 @@ def visualize_trees(case_id, num_trees=3):
             'age_norm', 'gender_enc', 'marital_enc', 'income_norm', 'occupation_risk_norm',
             'dependents_norm', 'bmi_norm', 'ins_period_norm', 'prem_period_norm',
             'health_risk_norm', 'overseas_enc', 'has_health_ins_enc',
-            'high_risk_hobby_enc', 'premium_budget_enc', 'beneficiary_enc',
+            'high_risk_hobby_enc', 'nominal_received_enc', 'beneficiary_enc',
             'goal_family', 'goal_health', 'goal_retire', 'goal_edu',
             'goal_critical', 'goal_income', 'goal_savings', 'goal_wealth'
         ]
