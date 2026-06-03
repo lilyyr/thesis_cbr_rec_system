@@ -8,7 +8,7 @@
     @auth
     <meta name="api-token" content="{{ auth()->user()->createToken('web-token')->plainTextToken }}">
     @endauth
-    
+
     <title>@yield('title', 'Insurance CBR System')</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -59,10 +59,14 @@
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
                     <a href="{{ route('home') }}" class="flex items-center space-x-3">
-                        <div class="w-10 h-10 gold-gradient rounded-lg flex items-center justify-center">
-                            <span class="text-black font-bold text-xl">C</span>
+                        <div class="w-10 h-10 rounded-lg overflow-hidden bg-white flex items-center justify-center">
+                            <img
+                                src="{{ asset('images/marvel_logo.jpeg') }}"
+                                alt="Insurance CBR Logo"
+                                class="w-full h-full object-cover"
+                            >
                         </div>
-                        <span class="text-white font-semibold text-lg tracking-tight">Insurance CBR</span>
+                        <span class="text-white font-semibold text-lg tracking-tight">Marvel Agency</span>
                     </a>
                 </div>
 

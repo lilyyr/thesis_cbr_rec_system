@@ -25,11 +25,13 @@ def visualize_trees(case_id, num_trees=3):
 
         feature_names = [
             'age_norm', 'gender_enc', 'marital_enc', 'income_norm', 'occupation_risk_norm',
-            'dependents_norm', 'bmi_norm', 'ins_period_norm', 'prem_period_norm',
+            'dependents_norm', 'bmi_norm', 'ins_period_norm',
             'health_risk_norm', 'overseas_enc', 'has_health_ins_enc',
             'high_risk_hobby_enc', 'nominal_received_enc', 'beneficiary_enc',
-            'goal_family', 'goal_health', 'goal_retire', 'goal_edu',
-            'goal_critical', 'goal_income', 'goal_savings', 'goal_wealth'
+            'coverage_asia_exc', 'coverage_hkg_sg_jpn', 'coverage_europe',
+            'coverage_north_america', 'coverage_south_america', 'coverage_africa', 'coverage_oceania',
+            'goal_life', 'goal_health', 'goal_retire', 'goal_edu',
+            'goal_critical', 'goal_income', 'goal_savings', 'goal_accidents'
         ]
         # Load case data if case_id provided
         case_vector = None
@@ -41,7 +43,7 @@ def visualize_trees(case_id, num_trees=3):
             try:
                 conn = mysql.connector.connect(
                     host='localhost',
-                    database='rec_ins_cbr2',
+                    database='rec_ins_cbr',
                     user='root',
                     password=''
                 )

@@ -1,39 +1,12 @@
-"""
-Train Random Forest Model on Historical Cases
-"""
-
 import json
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 import joblib
-import mysql.connector
 import os
-
-def connect_db():
-    """Connect to MySQL database"""
-    return mysql.connector.connect(
-        host='localhost',
-        user='root',
-        password='',
-        database='rec_ins_cbr'
-    )
+from cbr_system import connect_db, load_historical_cases
 
 def load_training_data():
-    """Load all cases from database"""
-    conn = connect_db()
-    cursor = conn.cursor(dictionary=True)
-
-    cursor.execute("""
-        SELECT
-            id,
-            product_id,
-            feature_vector
-        FROM cases
-    """)
-
-    cases = cursor.fetchall()
-    conn.close()
-
+    cases = load_historical_cases()
     print(f"Loaded {len(cases)} training cases")
 
     # Parse JSON feature vectors
@@ -42,14 +15,13 @@ def load_training_data():
     case_ids = []
 
     for case in cases:
-        X.append(json.loads(case['feature_vector']))
+        X.append(case['feature_vector'])
         y.append(case['product_id'])
         case_ids.append(case['id'])
 
     return np.array(X), np.array(y), case_ids
 
 def train_model(X, y):
-    """Train Random Forest model"""
     print("\nTraining Random Forest...")
     print(f"  Features: {X.shape[1]} dimensions")
     print(f"  Samples: {X.shape[0]}")
@@ -60,7 +32,7 @@ def train_model(X, y):
         n_estimators=100,
         max_depth=10,
         random_state=42,
-        n_jobs=-1
+        n_jobs=-1 #this determines speed, -1 means uses all my computer's cores so rf commands runs faster, can tweak this to compare speeds
     )
 
     rf.fit(X, y)
@@ -69,10 +41,7 @@ def train_model(X, y):
     return rf
 
 def generate_leaf_cache(rf, X, case_ids):
-    """Generate leaf node assignments for all training cases"""
     print("\nGenerating leaf cache...")
-
-    # Get leaf assignments for all cases
     leaf_assignments = rf.apply(X)
 
     print(f"Generated leaf assignments: {leaf_assignments.shape}")
@@ -84,10 +53,7 @@ def generate_leaf_cache(rf, X, case_ids):
 
     return leaf_dict
 
-    # return leaf_assignments.tolist()
-
-def save_model(rf, leaf_cache_dict):
-    """Save model and leaf cache"""
+def save_model(rf, leaf_cache):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     models_dir = os.path.join(script_dir, 'models')
 
@@ -103,7 +69,7 @@ def save_model(rf, leaf_cache_dict):
     # Save leaf cache
     cache_path = os.path.join(models_dir, 'leaf_cache.json')
     cache_data = {
-        'leaf_assignments': leaf_cache_dict, # Now a dictionary!
+        'leaf_assignments': leaf_cache,
         'n_trees': rf.n_estimators,
         'n_cases': len(leaf_cache_dict)
     }
@@ -114,25 +80,14 @@ def save_model(rf, leaf_cache_dict):
     print(f"Leaf cache saved to: {cache_path}")
 
 def main():
-    """Main training function"""
     print("=" * 60)
     print("Random Forest Training Script")
     print("=" * 60)
 
-    # Load data
     X, y, case_ids = load_training_data()
-
-    # Train model
     rf = train_model(X, y)
-
-    # # Generate leaf cache
-    # leaf_assignments = generate_leaf_cache(rf, X)
-
-    # Generate leaf cache - PASS case_ids!
-    leaf_cache_dict = generate_leaf_cache(rf, X, case_ids)
-
-    # Save
-    save_model(rf, leaf_cache_dict)
+    leaf_cache = generate_leaf_cache(rf, X, case_ids)
+    save_model(rf, leaf_cache)
 
     print("\n" + "=" * 60)
     print("Training Complete!")

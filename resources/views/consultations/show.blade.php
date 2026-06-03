@@ -27,6 +27,24 @@
 const apiToken = document.querySelector('meta[name="api-token"]').content;
 const consultationId = {{ $consultationId }};
 
+function calculateAge(dob) {
+    const birthDate = new Date(dob);
+    const today = new Date();
+
+    let age = today.getFullYear() - birthDate.getFullYear();
+
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (
+        monthDiff < 0 ||
+        (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+        age--;
+    }
+
+    return age;
+}
+
 async function loadConsultation() {
     try {
         const response = await fetch(`/api/recommendations/${consultationId}`, {
@@ -56,19 +74,19 @@ function displayConsultation(consultation) {
     document.getElementById('loading').classList.add('hidden');
 
     const matchPercentage = Math.round(
-        (consultation.euclidean_score + consultation.weighted_euclidean_score + consultation.random_forest_score) / 3 * 100
+        (parseFloat(consultation.euclidean_score) + parseFloat(consultation.weighted_euclidean_score) + parseFloat(consultation.random_forest_score)) / 3 * 100
     );
 
     // Format financial goals
     const goalLabels = {
-        'family_protection': 'Family Protection',
+        'life': 'Life Protection',
         'health': 'Health Coverage',
         'retirement': 'Retirement Planning',
         'education': 'Education Fund',
         'critical_illness': 'Critical Illness',
-        'income_replacement': 'Income Replacement',
-        'savings': 'Savings',
-        'wealth_accumulation': 'Wealth Accumulation'
+        'income_protection': 'Income Protection',
+        'savings': 'Savings/Investment',
+        'accidents': 'Accident Coverage',
     };
 
     const goals = Array.isArray(consultation.financial_goals)
@@ -166,8 +184,8 @@ function displayConsultation(consultation) {
                 </div>
 
                 <div>
-                    <p class="text-sm text-gray-600 mb-1">Age</p>
-                    <p class="text-lg font-semibold text-gray-900">${consultation.customer.age} years old</p>
+                    <p class="text-sm text-gray-600 mb-1">Date of Birth</p>
+                    <p class="text-lg font-semibold text-gray-900">${calculateAge(consultation.customer.dob)} years old</p>
                 </div>
 
                 <div>
@@ -235,12 +253,7 @@ function displayConsultation(consultation) {
                 </div>
 
                 <div>
-                    <p class="text-sm text-gray-600 mb-1">Premium Payment Period</p>
-                    <p class="text-lg font-semibold text-gray-900">${consultation.premium_payment_period} years</p>
-                </div>
-
-                <div>
-                    <p class="text-sm text-gray-600 mb-1">Premium Budget</p>
+                    <p class="text-sm text-gray-600 mb-1">Nominal Received</p>
                     <p class="text-lg font-semibold text-gray-900">Rp ${(consultation.nominal_received || 0).toLocaleString('id-ID')}</p>
                 </div>
 
@@ -260,6 +273,47 @@ function displayConsultation(consultation) {
                 </div>
             </div>
         </div>
+
+        <!-- Regional Coverage Display -->
+${consultation.overseas_medical_plans ? `
+    <div class="bg-white border border-gray-200 p-6 rounded-lg">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-yellow-600">
+            Overseas Medical Coverage Regions
+        </h2>
+
+        <div class="grid grid-cols-3 gap-4">
+            ${(() => {
+                const regions = consultation.coverage_regions
+                    ? JSON.parse(consultation.coverage_regions)
+                    : [];
+
+                const regionLabels = {
+                    'asia_except_hkg_sg_jpn': 'Asia (Except HKG, SG, JPN)',
+                    'hkg_sg_jpn': 'Hong Kong, Singapore, Japan',
+                    'europe': 'Europe',
+                    'north_america': 'North America',
+                    'south_america': 'South America',
+                    'africa': 'Africa',
+                    'oceania': 'Oceania',
+                };
+
+                return regions.map(region => `
+                    <div class="bg-blue-50 border border-blue-300 p-3 rounded flex items-center">
+                        <svg class="w-5 h-5 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        <span class="font-semibold text-blue-900">${regionLabels[region] || region}</span>
+                    </div>
+                `).join('');
+            })()}
+        </div>
+    </div>
+` : `
+    <div class="bg-white border border-gray-200 p-6 rounded-lg">
+        <h2 class="text-2xl font-bold text-gray-900 mb-4">Regional Coverage</h2>
+        <p class="text-gray-600">No overseas medical coverage required</p>
+    </div>
+`}
 
         <!-- Health Information -->
         <div class="bg-white border border-gray-200 p-6 rounded-lg">

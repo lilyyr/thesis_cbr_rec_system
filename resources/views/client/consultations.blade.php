@@ -42,10 +42,6 @@
                                         <span class="text-gray-600">Insurance Period:</span>
                                         <span class="font-semibold">{{ $consultation->insurance_period }} years</span>
                                     </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Payment Period:</span>
-                                        <span class="font-semibold">{{ $consultation->premium_payment_period }} years</span>
-                                    </div>
                                 </div>
                             </div>
 

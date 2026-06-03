@@ -83,6 +83,98 @@
             </div>
         </div>
 
+        <!-- Policy Holder Information -->
+<div class="bg-white border border-gray-200 p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-2">Policy Holder Information</h2>
+    <p class="text-sm text-gray-500 mb-5">
+        The policy holder is the person who signs the contract and pays the premiums.
+        This may or may not be the same person as the insured above.
+    </p>
+
+    <!-- Same-person toggle -->
+    <label class="flex items-start cursor-pointer p-4 bg-gray-50 border border-gray-200 rounded-lg mb-5 hover:bg-gray-100 transition">
+        <input type="checkbox"
+               id="holder_is_insured_checkbox"
+               name="holder_is_insured"
+               value="1"
+               checked
+               onchange="toggleHolderFields(this.checked)"
+               class="w-5 h-5 mt-0.5 mr-3 flex-shrink-0">
+        <div>
+            <span class="text-base font-semibold text-gray-900">
+                Policy holder and policy insured is the same person
+            </span>
+            <p class="text-sm text-gray-500 mt-0.5">
+                Uncheck if someone else (e.g. a parent) is purchasing this insurance on behalf of the insured.
+            </p>
+        </div>
+    </label>
+
+    <!-- Extra fields — hidden when same person -->
+    <div id="holder-fields" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                Holder Full Name <span class="text-red-500">*</span>
+            </label>
+            <input type="text" name="holder_name" id="holder_name"
+                   class="w-full px-4 py-2 border border-gray-300 rounded focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600">
+        </div>
+
+        <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                Holder Date of Birth <span class="text-red-500">*</span>
+            </label>
+            <input type="date" name="holder_dob" id="holder_dob"
+                   class="w-full px-4 py-2 border border-gray-300 rounded focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600">
+        </div>
+
+        <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                Holder Gender <span class="text-red-500">*</span>
+            </label>
+            <select name="holder_gender" id="holder_gender"
+                    class="w-full px-4 py-2 border border-gray-300 rounded focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600">
+                <option value="">Select Gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                Holder Income Range <span class="text-red-500">*</span>
+            </label>
+            <select name="holder_income_range" id="holder_income_range"
+                    class="w-full px-4 py-2 border border-gray-300 rounded focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600">
+                <option value="">Select Range</option>
+                <option value="below_50m">Below Rp 50M</option>
+                <option value="50m_100m">Rp 50M – 100M</option>
+                <option value="100m_300m">Rp 100M – 300M</option>
+                <option value="300m_500m">Rp 300M – 500M</option>
+                <option value="500m_1b">Rp 500M – 1B</option>
+                <option value="above_1b">Above Rp 1B</option>
+            </select>
+        </div>
+
+        <div class="md:col-span-2">
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                Holder's Relationship to the Insured <span class="text-red-500">*</span>
+            </label>
+            <select name="holder_relationship_to_insured" id="holder_relationship_to_insured"
+                    class="w-full px-4 py-2 border border-gray-300 rounded focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600">
+                <option value="">Select Relationship</option>
+                <option value="orang tua kandung">Orang Tua Kandung</option>
+                <option value="suami/istri">Suami/Istri</option>
+                <option value="anak kandung">Anak Kandung</option>
+                <option value="adik/kakak kandung">Adik/Kakak Kandung</option>
+                <option value="nenek/kakek kandung">Nenek/Kakek Kandung</option>
+                <option value="cucu/cicit">Cucu/Cicit</option>
+                <option value="lainnya">Lainnya</option>
+            </select>
+        </div>
+    </div>
+</div>
+
         <!-- Step 2: Beneficiary Information -->
         <div class="bg-white border border-gray-200 p-6">
             <h2 class="text-2xl font-bold text-gray-900 mb-4">Beneficiary Information</h2>
@@ -135,8 +227,8 @@
                 <label class="block text-sm font-semibold text-gray-700 mb-2">Financial Goals (select all that apply)</label>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <label class="flex items-center">
-                        <input type="checkbox" name="financial_goals[]" value="family_protection" class="mr-2">
-                        Family Protection
+                        <input type="checkbox" name="financial_goals[]" value="life" class="mr-2">
+                        Life
                     </label>
                     <label class="flex items-center">
                         <input type="checkbox" name="financial_goals[]" value="health" class="mr-2">
@@ -160,11 +252,11 @@
                     </label>
                     <label class="flex items-center">
                         <input type="checkbox" name="financial_goals[]" value="savings" class="mr-2">
-                        Savings
+                        Savings/Investment
                     </label>
                     <label class="flex items-center">
-                        <input type="checkbox" name="financial_goals[]" value="wealth_protection" class="mr-2">
-                        Wealth Protection
+                        <input type="checkbox" name="financial_goals[]" value="accidents" class="mr-2">
+                        Accidents
                     </label>
                 </div>
             </div>
@@ -177,12 +269,6 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Premium Payment Period (years)</label>
-                    <input type="number" name="premium_payment_period" min="1" max="40" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600">
-                </div>
-
-                <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Nominal Received (Rp)</label>
                     <input type="number" name="nominal_received" min="0" required
                            class="w-full px-4 py-2 border border-gray-300 rounded focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600">
@@ -190,10 +276,6 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                <label class="flex items-center">
-                    <input type="checkbox" name="overseas_medical_plans" value="1" class="mr-2">
-                    Overseas plans for medical purposes
-                </label>
                 <label class="flex items-center">
                     <input type="checkbox" name="has_existing_health_insurance" value="1" class="mr-2">
                     Has existing health insurance
@@ -203,7 +285,64 @@
                     Has high-risk hobby
                 </label>
             </div>
-        </div>
+
+            <div class="mt-6 border-t border-gray-300 pt-6">
+                <div class="mb-4">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox"
+                               id="overseas_medical_plans"
+                               name="overseas_medical_plans"
+                               value="1"
+                               onchange="toggleOverseasRegions(this.checked)"
+                               class="mr-3 w-5 h-5">
+                        <div>
+                            <span class="text-lg font-semibold text-gray-900">Plans for overseas travel/medical purposes</span>
+                            <p class="text-sm text-gray-600">Select regions you need coverage for</p>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Regional Coverage Options (Hidden by default) -->
+                <div id="overseas-regions-section" class="hidden ml-8 bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                    <p class="text-sm font-semibold text-blue-900 mb-3">Select Coverage Regions:</p>
+
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <label class="flex items-center bg-white p-3 rounded border border-blue-200 hover:border-blue-400 cursor-pointer transition">
+                            <input type="checkbox" name="coverage_regions[]" value="asia_exc_hkg_sg_jpn" class="mr-2">
+                            <div class="font-semibold text-gray-900">Asia Exc. HKG, SG and JPN</div>
+                        </label>
+
+                        <label class="flex items-center bg-white p-3 rounded border border-blue-200 hover:border-blue-400 cursor-pointer transition">
+                            <input type="checkbox" name="coverage_regions[]" value="hkg_sg_jpn" class="mr-2">
+                            <div class="font-semibold text-gray-900">HKG, SG and JPN</div>
+                        </label>
+
+                        <label class="flex items-center bg-white p-3 rounded border border-blue-200 hover:border-blue-400 cursor-pointer transition">
+                            <input type="checkbox" name="coverage_regions[]" value="europe" class="mr-2">
+                            <div class="font-semibold text-gray-900">Europe</div>
+                        </label>
+
+                        <label class="flex items-center bg-white p-3 rounded border border-blue-200 hover:border-blue-400 cursor-pointer transition">
+                            <input type="checkbox" name="coverage_regions[]" value="north_america" class="mr-2">
+                            <div class="font-semibold text-gray-900">North America</div>
+                        </label>
+
+                        <label class="flex items-center bg-white p-3 rounded border border-blue-200 hover:border-blue-400 cursor-pointer transition">
+                            <input type="checkbox" name="coverage_regions[]" value="south_america" class="mr-2">
+                            <div class="font-semibold text-gray-900">South America</div>
+                        </label>
+
+                        <label class="flex items-center bg-white p-3 rounded border border-blue-200 hover:border-blue-400 cursor-pointer transition">
+                            <input type="checkbox" name="coverage_regions[]" value="africa" class="mr-2">
+                            <div class="font-semibold text-gray-900">Africa</div>
+                        </label>
+
+                        <label class="flex items-center bg-white p-3 rounded border border-blue-200 hover:border-blue-400 cursor-pointer transition">
+                            <input type="checkbox" name="coverage_regions[]" value="oceania" class="mr-2">
+                            <div class="font-semibold text-gray-900">Oceania</div>
+                        </label>
+                    </div>
+                </div>
 
         <!-- Step 4: Health Information -->
         <div class="bg-white border border-gray-200 p-6">
@@ -288,6 +427,32 @@
 </div>
 
 <script>
+function toggleOverseasRegions(isChecked) {
+    const regionsSection = document.getElementById('overseas-regions-section');
+    if (isChecked) {
+        regionsSection.classList.remove('hidden');
+    } else {
+        regionsSection.classList.add('hidden');
+        // Uncheck all region checkboxes
+        document.querySelectorAll('input[name="coverage_regions[]"]').forEach(cb => cb.checked = false);
+    }
+}
+
+function toggleHolderFields(isSame) {
+    const section = document.getElementById('holder-fields');
+    if (isSame) {
+        section.classList.add('hidden');
+        // Clear fields so they don't accidentally send stale values
+        ['holder_name', 'holder_dob', 'holder_gender', 'holder_income_range', 'holder_relationship_to_insured']
+            .forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+    } else {
+        section.classList.remove('hidden');
+    }
+}
+
 const apiToken = document.querySelector('meta[name="api-token"]').content;
 
 document.getElementById('consultation-form').addEventListener('submit', async function(e) {
@@ -317,15 +482,16 @@ document.getElementById('consultation-form').addEventListener('submit', async fu
         'has_serious_illness', 'receiving_treatment', 'family_medical_history', 'is_pregnant'
     ];
 
-    booleanFields.forEach(field => {
-        data[field] = false;
-    });
+    booleanFields.forEach(field => {data[field] = false;});
+    data.financial_goals = [];
+    data.coverage_regions = [];
 
     // Convert FormData to JSON
     for (let [key, value] of formData.entries()) {
         if (key === 'financial_goals[]') {
-            if (!data.financial_goals) data.financial_goals = [];
             data.financial_goals.push(value);
+        } else if (key === 'coverage_regions[]') {
+            data.coverage_regions.push(value);
         } else if (booleanFields.includes(key)) {
             data[key] = true; // If checkbox is checked, it will appear in formData
         } else {
@@ -333,42 +499,36 @@ document.getElementById('consultation-form').addEventListener('submit', async fu
         }
     }
 
-    // Convert FormData to JSON
-    // for (let [key, value] of formData.entries()) {
-    //     if (key === 'financial_goals[]') {
-    //         if (!data.financial_goals) data.financial_goals = [];
-    //         data.financial_goals.push(value);
-    //     } else if (value === 'on') {
-    //         // Checkboxes without explicit value
-    //         data[key.replace('[]', '')] = true;
-    //     } else {
-    //         data[key.replace('[]', '')] = value;
-    //     }
-    // }
+     // Policy holder
+    const holderIsSame = document.getElementById('holder_is_insured_checkbox').checked;
+    data.holder_is_insured = holderIsSame;
 
-    // Convert checkboxes to boolean
-    // const booleanFields = ['overseas_medical_plans', 'has_existing_health_insurance', 'high_risk_hobby',
-    //     'weight_change_last_year', 'smoked_last_year', 'hospitalization_last_5_years',
-    //     'lab_tests_last_5_years', 'accident_poisoning_last_5_years', 'has_disability',
-    //     'has_serious_illness', 'receiving_treatment', 'family_medical_history', 'is_pregnant'];
-
-    // booleanFields.forEach(field => {
-    //     data[field] = data[field] === true || data[field] === '1';
-    // });
+    if (holderIsSame) {
+        data.holder_name = data.name;
+        data.holder_dob = data.dob;
+        data.holder_gender = data.gender;
+        data.holder_income_range = data.income_range;
+        data.holder_relationship_to_insured = 'diri sendiri';
+    }
+    // If not same, the formData loop already captured the holder_ fields above.
 
     // Convert numeric strings to numbers
-    const numericFields = ['occupation_id', 'num_dependents', 'insurance_period',
-            'premium_payment_period', 'nominal_received', 'height', 'weight'];
-    numericFields.forEach(field => {
-        if (data[field]) {
-            data[field] = parseFloat(data[field]);
-        }
-    });
+    // const numericFields = ['occupation_id', 'num_dependents', 'insurance_period', 'nominal_received', 'height', 'weight'];
+    // numericFields.forEach(field => {
+    //     if (data[field]) {
+    //         data[field] = parseFloat(data[field]);
+    //     }
+    // });
+    data.occupation_id = parseInt(data.occupation_id);
+    data.num_dependents = parseInt(data.num_dependents);
+    data.insurance_period = parseInt(data.insurance_period);
+    data.nominal_received = parseFloat(data.nominal_received);
+    data.height = parseFloat(data.height);
+    data.weight = parseFloat(data.weight);
 
     console.log('Submitting data:', data);
 
     try {
-        // Call API
         const response = await fetch('/api/recommendations', {
             method: 'POST',
             headers: {

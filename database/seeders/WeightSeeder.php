@@ -60,7 +60,7 @@ class WeightSeeder extends Seeder
                 'description' => 'Premium payment period'
             ],
             [
-                'feature_name' => 'overseas_plans',
+                'feature_name' => 'overseas_medical_plans',
                 'weight' => 0.03,
                 'description' => 'Overseas plans'
             ],
@@ -82,7 +82,7 @@ class WeightSeeder extends Seeder
             [
                 'feature_name' => 'nominal_received',
                 'weight' => 0.10,
-                'description' => 'Premium budget'
+                'description' => 'Nominal received'
             ],
             [
                 'feature_name' => 'beneficiary_relationship',
@@ -90,9 +90,52 @@ class WeightSeeder extends Seeder
                 'description' => 'Beneficiary relationship closeness'
             ],
 
+            // Coverage Regions
+            [
+                'feature_name' => 'coverage_indonesia',
+                'weight' => 0.05,
+                'description' => 'Coverage for Indonesia'
+            ],
+            [
+                'feature_name' => 'coverage_asia_exc',
+                'weight' => 0.05,
+                'description' => 'Coverage for Asia except HKG, SG, JPN'
+            ],
+            [
+                'feature_name' => 'coverage_hkg_sg_jpn',
+                'weight' => 0.05,
+                'description' => 'Coverage for HKG, SG, JPN'
+            ],
+            [
+                'feature_name' => 'coverage_europe',
+                'weight' => 0.05,
+                'description' => 'Coverage for Europe'
+            ],
+            [
+                'feature_name' => 'coverage_north_america',
+                'weight' => 0.05,
+                'description' => 'Coverage for North America'
+            ],
+            [
+                'feature_name' => 'coverage_south_america',
+                'weight' => 0.05,
+                'description' => 'Coverage for South America'
+            ],
+            [
+                'feature_name' => 'coverage_africa',
+                'weight' => 0.05,
+                'description' => 'Coverage for Africa'
+            ],
+            [
+                'feature_name' => 'coverage_oceania',
+                'weight' => 0.05,
+                'description' => 'Coverage for Oceania'
+            ],
+
+
             // Financial Goals
             [
-                'feature_name' => 'goal_family_protection',
+                'feature_name' => 'goal_life',
                 'weight' => 0.07,
                 'description' => 'Family protection goal'
             ],

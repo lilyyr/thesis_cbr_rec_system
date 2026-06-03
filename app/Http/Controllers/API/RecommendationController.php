@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\CaseModel;
 use App\Models\Customer;
+use App\Models\PolicyHolder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -27,9 +28,16 @@ class RecommendationController extends Controller
             'gender' => 'required|in:male,female',
             'dob' => 'required|date|before:today',
             'marital_status' => 'required|in:single,married',
-            'occupation_id' => 'required|exists:occupations,id',
             'income_range' => 'required|in:below_50m,50m_100m,100m_300m,300m_500m,500m_1b,above_1b',
+            'occupation_id' => 'required|exists:occupations,id',
             'num_dependents' => 'required|integer|min:0',
+
+            'holder_is_insured' => 'required|boolean',
+            'holder_name' => 'required|string|max:255',
+            'holder_dob' => 'required|date',
+            'holder_gender' => 'required|in:male,female',
+            'holder_income_range' => 'required|in:below_50m,50m_100m,100m_300m,300m_500m,500m_1b,above_1b',
+            'holder_relationship_to_insured' => 'required|in:diri sendiri,adik/kakak kandung,anak kandung,cucu/cicit,nenek/kakek kandung,orang tua kandung,suami/istri,lainnya',
 
             'beneficiary_name' => 'required|string|max:255',
             'beneficiary_dob' => 'required|date|before:today',
@@ -38,9 +46,9 @@ class RecommendationController extends Controller
 
             'financial_goals' => 'required|array|min:1',
             'insurance_period' => 'required|integer|min:1|max:100',
-            'premium_payment_period' => 'required|integer|min:1|max:10',
             'nominal_received' => 'required|numeric|min:0',
             'overseas_medical_plans' => 'nullable|boolean',
+            'coverage_regions' => 'nullable|array',
             'has_existing_health_insurance' => 'nullable|boolean',
             'high_risk_hobby' => 'nullable|boolean',
 
@@ -56,7 +64,7 @@ class RecommendationController extends Controller
             'receiving_treatment' => 'nullable|boolean',
             'family_medical_history' => 'nullable|boolean',
             'is_pregnant' => 'nullable|boolean',
-            'health_details' => 'nullable|string|max:1000',
+            'health_details' => 'nullable|string|max:1000'
         ]);
 
         if ($validator->fails()) {
@@ -69,52 +77,52 @@ class RecommendationController extends Controller
 
         $validated = $validator->validated();
 
-        $incomeMap = [
-            'below_50m' => 25000000,
-            '50m_100m' => 75000000,
-            '100m_300m' => 200000000,
-            '300m_500m' => 400000000,
-            '500m_1b' => 750000000,
-            'above_1b' => 1500000000
-        ];
-
-        $income = $incomeMap[$validated['income_range']] ?? 0;
-
         try {
             DB::beginTransaction();
 
             // Create or find customer
-            $customer = Customer::firstOrCreate(
-                [
-                    'name' => $validated['name'],
-                    'dob' => $validated['dob'],
-                ],
-                [
-                    'gender' => $validated['gender'],
-                    'marital_status' => $validated['marital_status'],
-                    'occupation_id' => $validated['occupation_id'],
-                    'income_range' => $validated['income_range'],
-                    'num_dependents' => $validated['num_dependents'],
-                ]
-            );
+            $customer = Customer::firstOrCreate([
+                'name' => $validated['name'],
+                'dob' => $validated['dob'],
+                'gender' => $validated['gender'],
+                'marital_status' => $validated['marital_status'],
+                'occupation_id' => $validated['occupation_id'],
+                'income_range' => $validated['income_range'],
+                'num_dependents' => $validated['num_dependents']
+            ]);
+
+            $policyHolder = PolicyHolder::firstOrCreate([
+                'name' => $validated['holder_name'],
+                'dob' => $validated['holder_dob'],
+                'gender' => $validated['holder_gender'],
+                'income_range' => $validated['holder_income_range'],
+            ]);
 
             // Prepare data for Python CBR
             $cbrInput = [
-                'name' => $customer->name,
                 'gender' => $customer->gender,
                 'dob' => $customer->dob->format('Y-m-d'),
-                'marital_status' => $validated['marital_status'],
-                'occupation_id' => (int) $validated['occupation_id'],
-                'income_range' => (float) $validated['income_range'],
-                'income' => (float) $income,
+                // 'marital_status' => $validated['marital_status'],
+                // 'occupation_id' => (int) $validated['occupation_id'],
+                'marital_status' => $customer->marital_status,
+                'occupation_id' => (int) $customer->occupation_id,
+                // 'income' => (float) $income,
                 'num_dependents' => (int) $customer->num_dependents,
+
+                // 'holder_dob' => $validated['holder_dob'],
+                // 'holder_income_range' => $validated['holder_income_range'],
+                // 'holder_relationship_to_insured' => $validated['holder_relationship_to_insured'],
+
+                // 'holder_dob' => $policyHolder->dob->format('Y-m-d'),
+                'holder_income_range' => $policyHolder->income_range,
+                'holder_relationship_to_insured' => $validated['holder_relationship_to_insured'],
 
                 'beneficiary_relationship' => $validated['beneficiary_relationship'],
                 'financial_goals' => $validated['financial_goals'],
                 'insurance_period' => (int) $validated['insurance_period'],
-                'premium_payment_period' => (int) $validated['premium_payment_period'],
                 'nominal_received' => (float) $validated['nominal_received'],
                 'overseas_medical_plans' => (bool) ($validated['overseas_medical_plans'] ?? false),
+                'coverage_regions' => $validated['coverage_regions'] ?? [],
                 'has_existing_health_insurance' => (bool) ($validated['has_existing_health_insurance'] ?? false),
                 'high_risk_hobby' => (bool) ($validated['high_risk_hobby'] ?? false),
                 'height' => (float) $validated['height'],
@@ -123,13 +131,13 @@ class RecommendationController extends Controller
                 'smoked_last_year' => (bool) ($validated['smoked_last_year'] ?? false),
                 'hospitalization_last_5_years' => (bool) ($validated['hospitalization_last_5_years'] ?? false),
                 'lab_tests_last_5_years' => (bool) ($validated['lab_tests_last_5_years'] ?? false),
-                'accident_poisoning_last_5_years' => (bool) ($validated['accident_poisoning_last_5_years'] ?? false),
+                'accident_poisoning_lazst_5_years' => (bool) ($validated['accident_poisoning_last_5_years'] ?? false),
                 'has_disability' => (bool) ($validated['has_disability'] ?? false),
                 'has_serious_illness' => (bool) ($validated['has_serious_illness'] ?? false),
                 'receiving_treatment' => (bool) ($validated['receiving_treatment'] ?? false),
                 'family_medical_history' => (bool) ($validated['family_medical_history'] ?? false),
                 'is_pregnant' => $customer->gender === 'female' ? (bool) ($validated['is_pregnant'] ?? false) : null,
-                'health_details' => $validated['health_details'] ?? null,
+                'health_details' => $validated['health_details'] ?? null
             ];
 
             // Call Python CBR system
@@ -150,13 +158,16 @@ class RecommendationController extends Controller
 
             $case = CaseModel::create([
                 'customer_id' => $customer->id,
+                'policy_holder_id' => $policyHolder->id,
+                'holder_is_insured' => $validated['holder_is_insured'],
+                'holder_relationship_to_insured' => $validated['holder_relationship_to_insured'],
                 'product_id' => $topRecommendation['product_id'],
                 'agent_id' => Auth::id(),
                 'financial_goals' => $validated['financial_goals'],
                 'insurance_period' => $validated['insurance_period'],
-                'premium_payment_period' => $validated['premium_payment_period'],
                 'nominal_received' => $validated['nominal_received'],
                 'overseas_medical_plans' => $validated['overseas_medical_plans'] ?? false,
+                'coverage_regions' => $validated['coverage_regions'] ?? [], //json_encode($validated['coverage_regions'] ?? []),
                 'has_existing_health_insurance' => $validated['has_existing_health_insurance'] ?? false,
                 'high_risk_hobby' => $validated['high_risk_hobby'] ?? false,
                 'beneficiary_name' => $validated['beneficiary_name'],
@@ -183,16 +194,10 @@ class RecommendationController extends Controller
                 'weighted_euclidean_score' => $topRecommendation['weighted_euclidean_score'],
                 'random_forest_score' => $topRecommendation['random_forest_score'],
                 'algorithm_details' => $cbrResult['algorithm_details'],
+                'all_recommendations' => $cbrResult['recommendations']
             ]);
 
             DB::commit();
-
-            $feature_vector_names = ['age_norm', 'gender_encoded', 'marital_encoded', 'income_norm', 'occupation_risk_norm',
-            'dependents_norm', 'bmi_norm', 'ins_period_norm', 'prem_period_norm', 'health_risk_norm',
-            'overseas_encoded', 'health_ins_encoded', 'high_risk_hobby_encoded',
-            'nominal_received_norm', 'beneficiary_encoded',
-            'goal_family', 'goal_health', 'goal_retirement', 'goal_education',
-            'goal_critical', 'goal_income', 'goal_savings', 'goal_wealth'];
 
             return response()->json([
                 'success' => true,
@@ -214,7 +219,6 @@ class RecommendationController extends Controller
                     ],
                     'all_recommendations' => $cbrResult['recommendations'],
                     'execution_time' => $cbrResult['execution_time'],
-                    'feature_names' => $feature_vector_names,
                     'feature_vector' => $cbrResult['feature_vector']
                 ],
                 'links' => [
@@ -295,33 +299,55 @@ class RecommendationController extends Controller
      */
     public function getHistory(Request $request)
     {
-        $query = CaseModel::with(['customer', 'customer.occupation', 'product', 'agent']);
+        try {
+            $user = Auth::user();
+            $perPage = $request->input('per_page', 15);
+            $search  = $request->input('search', '');
+            $sort    = $request->input('sort', 'latest'); // 'latest' or 'oldest'
 
-        // Filter by role
-        if (Auth::user()->role === 'agent') {
-            $query->where('agent_id', Auth::id());
-        } elseif (Auth::user()->role === 'client') {
-            if (Auth::user()->customer_id) {
-                $query->where('customer_id', Auth::user()->customer_id);
+            $query = CaseModel::with(['customer', 'product', 'agent'])
+                ->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc');
+
+            // Role-based scoping
+            if ($user->role === 'agent') {
+                $query->where('agent_id', $user->id);
+            } elseif ($user->role === 'client') {
+                $query->whereHas('customer', function ($q) use ($user) {
+                    $q->where('user_id', $user->id);
+                });
             }
+
+            // Search by customer name OR product name
+            if ($search !== '') {
+                $query->where(function ($q) use ($search) {
+                    $q->whereHas('customer', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%");
+                    })->orWhereHas('product', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%");
+                    });
+                });
+            }
+
+            $cases = $query->paginate($perPage);
+
+            return response()->json([
+                'success'    => true,
+                'data'       => $cases->items(),
+                'pagination' => [
+                    'current_page' => $cases->currentPage(),
+                    'per_page'     => $cases->perPage(),
+                    'total'        => $cases->total(),
+                    'last_page'    => $cases->lastPage(),
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Get history error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve consultation history',
+            ], 500);
         }
-
-        // Pagination
-        $perPage = $request->get('per_page', 15);
-        $consultations = $query->latest()->paginate($perPage);
-
-        return response()->json([
-            'success' => true,
-            'data' => $consultations->items(),
-            'pagination' => [
-                'total' => $consultations->total(),
-                'per_page' => $consultations->perPage(),
-                'current_page' => $consultations->currentPage(),
-                'last_page' => $consultations->lastPage(),
-                'from' => $consultations->firstItem(),
-                'to' => $consultations->lastItem()
-            ]
-        ]);
     }
 
     /**
@@ -329,7 +355,7 @@ class RecommendationController extends Controller
      */
     public function getConsultation($id)
     {
-        $consultation = CaseModel::with(['customer', 'customer.occupation', 'product', 'agent'])->find($id);
+        $consultation = CaseModel::with(['customer', 'customer.occupation', 'product', 'agent', 'policyHolder'])->find($id);
 
         if (!$consultation) {
             return response()->json([
@@ -345,19 +371,9 @@ class RecommendationController extends Controller
             ], 403);
         }
 
-        $feature_vector_names = ['age_norm', 'gender_encoded', 'marital_encoded', 'income_norm', 'occupation_risk_norm',
-            'dependents_norm', 'bmi_norm', 'ins_period_norm', 'prem_period_norm', 'health_risk_norm',
-            'overseas_encoded', 'health_ins_encoded', 'high_risk_hobby_encoded',
-            'nominal_received_norm', 'beneficiary_encoded',
-            'goal_family', 'goal_health', 'goal_retirement', 'goal_education',
-            'goal_critical', 'goal_income', 'goal_savings', 'goal_wealth'];
-
         return response()->json([
             'success' => true,
-            'data' => [
-                $consultation,
-                'feature_vector_names' => $feature_vector_names,
-            ]
+            'data' => $consultation
         ]);
     }
 

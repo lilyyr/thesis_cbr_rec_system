@@ -8,8 +8,12 @@
         <!-- Logo -->
         <div class="text-center mb-8">
             <div class="inline-block mb-4">
-                <div class="w-16 h-16 gold-gradient rounded-2xl flex items-center justify-center gold-border-glow">
-                    <span class="text-black font-bold text-3xl">C</span>
+                <div class="w-29 h-20 rounded-lg overflow-hidden bg-white flex items-center justify-center">
+                    <img
+                        src="{{ asset('images/marvel_logo.jpeg') }}"
+                        alt="Insurance CBR Logo"
+                        class="w-full h-full object-cover"
+                    >
                 </div>
             </div>
             <h2 class="text-3xl font-bold text-gray-900">Welcome Back</h2>
@@ -62,16 +66,6 @@
                     Sign In
                 </button>
             </form>
-        </div>
-
-        <!-- Demo Accounts -->
-        <div class="mt-8 bg-gray-50 border border-gray-200 p-6">
-            <p class="text-sm font-semibold text-gray-900 mb-3">Demo Accounts:</p>
-            <div class="space-y-2 text-xs text-gray-700">
-                <div><span class="font-semibold">Admin:</span> admin@insurance.com / password123</div>
-                <div><span class="font-semibold">Agent:</span> agent@insurance.com / password123</div>
-                <div><span class="font-semibold">Client:</span> client@insurance.com / password123</div>
-            </div>
         </div>
     </div>
 </div>

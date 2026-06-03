@@ -1,8 +1,3 @@
-"""
-Complete CBR System - Single Script
-All preprocessing, algorithms, and aggregation in one place
-"""
-
 import json
 import sys
 import numpy as np
@@ -13,7 +8,6 @@ import mysql.connector
 from typing import List, Dict, Tuple
 import os
 
-# DATABASE CONNECTION
 def connect_db():
     return mysql.connector.connect(
         host='localhost',
@@ -22,15 +16,22 @@ def connect_db():
         database='rec_ins_cbr'
     )
 
+def get_feature_weights():
+    conn = connect_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT feature_name, weight FROM weights ORDER BY id")
+    weights = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return [{'feature': w['feature_name'], 'weight': float(w['weight'])} for w in weights]
+
 # DATA PREPROCESSING
 def calculate_age(dob: str) -> int:
-    """Calculate age from date of birth"""
     birth_year = int(dob.split('-')[0])
     current_year = datetime.now().year
     return current_year - birth_year
 
 def calculate_bmi(height: float, weight: float) -> float:
-    """Calculate BMI"""
     height_m = height / 100
     return weight / (height_m ** 2)
 
@@ -68,20 +69,16 @@ def calculate_health_risk(data: Dict) -> float:
     return risk
 
 def normalize_value(value: float, min_val: float, max_val: float) -> float:
-    """Normalize value to 0-1 range"""
     if max_val == min_val:
         return 0.0
     return (value - min_val) / (max_val - min_val)
 
 def preprocess_case(data: Dict) -> Dict:
-    # Calculate derived fields
+    #police insured
     age = calculate_age(data['dob'])
     bmi = calculate_bmi(data['height'], data['weight'])
-
     data['age'] = age
     data['bmi'] = bmi
-
-    # Calculate health risk
     health_risk = calculate_health_risk(data)
 
     conn = connect_db()
@@ -92,21 +89,16 @@ def preprocess_case(data: Dict) -> Dict:
     cursor.close()
     conn.close()
 
-    # Normalize features
     age_norm = normalize_value(age, 1, 70)
     gender_encoded = 1 if data['gender'] == 'male' else 0
     marital_encoded = 1 if data['marital_status'] == 'married' else 0
-    income_norm = normalize_value(data['income'], 0, 1500000000)
-    occupation_risk_norm = normalize_value(occupation_risk, 1,3)
+    occupation_risk_norm = normalize_value(occupation_risk, 1, 3)
     dependents_norm = normalize_value(data['num_dependents'], 0, 10)
     bmi_norm = normalize_value(bmi, 15, 40)
     ins_period_norm = normalize_value(data['insurance_period'], 1, 50)
-    prem_period_norm = normalize_value(data['premium_payment_period'], 1, 40)
     health_risk_norm = normalize_value(health_risk, 0, 25)
-    overseas_encoded = 1 if data['overseas_medical_plans'] else 0
     health_ins_encoded = 1 if data['has_existing_health_insurance'] else 0
     high_risk_hobby_encoded = 1 if data['high_risk_hobby'] else 0
-
     nominal_received_norm = normalize_value(data['nominal_received'], 0, 1000000000)
 
     relationship_map = {
@@ -121,23 +113,67 @@ def preprocess_case(data: Dict) -> Dict:
 
     beneficiary_encoded = relationship_map.get(data['beneficiary_relationship'], 0.3)
 
+    overseas_encoded = 1 if data['overseas_medical_plans'] else 0
+
+    coverage = data['coverage_regions']
+    coverage_asia_exc = 1 if 'asia_exc_hkg_sg_jpn' in coverage else 0
+    coverage_hkg_sg_jpn = 1 if 'hkg_sg_jpn' in coverage else 0
+    coverage_europe = 1 if 'europe' in coverage else 0
+    coverage_north_america = 1 if 'north_america' in coverage else 0
+    coverage_south_america = 1 if 'south_america' in coverage else 0
+    coverage_africa = 1 if 'africa' in coverage else 0
+    coverage_oceania = 1 if 'oceania' in coverage else 0
+
     goals = data['financial_goals']
-    goal_family = 1 if 'family_protection' in goals else 0
+    goal_life = 1 if 'life' in goals else 0
     goal_health = 1 if 'health' in goals else 0
     goal_retirement = 1 if 'retirement' in goals else 0
     goal_education = 1 if 'education' in goals else 0
     goal_critical = 1 if 'critical_illness' in goals else 0
     goal_income = 1 if 'income_protection' in goals else 0
     goal_savings = 1 if 'savings' in goals else 0
-    goal_wealth = 1 if 'wealth_protection' in goals else 0
+    goal_accidents = 1 if 'accidents' in goals else 0
 
+    #police holder
+    incomeMap = {
+            'below_50m': 25000000,
+            '50m_100m': 75000000,
+            '100m_300m': 200000000,
+            '300m_500m': 400000000,
+            '500m_1b': 750000000,
+            'above_1b': 1500000000
+    }
+
+    holder_income_range = data['holder_income_range']
+    holder_income = incomeMap.get(holder_income_range, 0)
+    holder_income_norm = normalize_value(holder_income, 25000000, 1500000000)
+
+
+    holder_relationship_map = {
+        'diri sendiri': 1.0,
+        'suami/istri': 0.9,
+        'orang tua kandung': 0.8,
+        'anak kandung': 0.7,
+        'adik/kakak kandung': 0.6,
+        'nenek/kakek kandung': 0.5,
+        'cucu/cicit': 0.4,
+        'lainnya': 0.2,
+    }
+
+    holder_relationship = data['holder_relationship_to_insured']
+    holder_relationship_encoded = holder_relationship_map.get(holder_relationship, 0.2)
+
+    #30D
     feature_vector = [
-        age_norm, gender_encoded, marital_encoded, income_norm, occupation_risk_norm,
-        dependents_norm, bmi_norm, ins_period_norm, prem_period_norm, health_risk_norm,
+        age_norm, gender_encoded, marital_encoded, occupation_risk_norm,
+        dependents_norm, bmi_norm, ins_period_norm, health_risk_norm,
         overseas_encoded, health_ins_encoded, high_risk_hobby_encoded,
         nominal_received_norm, beneficiary_encoded,
-        goal_family, goal_health, goal_retirement, goal_education,
-        goal_critical, goal_income, goal_savings, goal_wealth
+        coverage_asia_exc, coverage_hkg_sg_jpn, coverage_europe,
+        coverage_north_america, coverage_south_america, coverage_africa, coverage_oceania,
+        goal_life, goal_health, goal_retirement, goal_education,
+        goal_critical, goal_income, goal_savings, goal_accidents,
+        holder_income_norm, holder_relationship_encoded
     ]
 
     return {
@@ -145,14 +181,100 @@ def preprocess_case(data: Dict) -> Dict:
         'health_risk_score': health_risk
     }
 
+def load_historical_cases() -> List[Dict]:
+    conn = connect_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT c.*, p.name as product_name, cu.*, ph.income_range as holder_income_range
+        FROM cases c
+        JOIN customers cu ON c.customer_id = cu.id
+        JOIN products p ON c.product_id = p.id
+        JOIN policy_holders ph ON c.policy_holder_id = ph.id
+        ORDER BY c.id
+    """)
+    cases = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    results = []
+    for case in cases:
+        input_data = {
+            # 'gender': case['gender'],
+            # 'dob': str(case['dob']),
+            # 'marital_status': case['marital_status'],
+            # 'occupation_id': case['occupation_id'],
+            # 'income_range': case['income_range'],
+            # 'num_dependents': int(case['num_dependents']),
+
+            # 'insurance_period': int(case['insurance_period']),
+            # 'has_existing_health_insurance': bool(case['has_existing_health_insurance']),
+            # 'high_risk_hobby': bool(case['high_risk_hobby']),
+            # 'nominal_received': float(case['nominal_received']),
+            # 'beneficiary_relationship': case['beneficiary_relationship'],
+            # 'overseas_medical_plans': bool(case['overseas_medical_plans']),
+            # 'coverage_regions': json.loads(case['coverage_regions']),
+            # 'financial_goals': json.loads(case['financial_goals']),
+            # 'height': float(case['height']),
+            # 'weight': float(case['weight']),
+            # 'weight_change_last_year': bool(case['weight_change_last_year']),
+            # 'smoked_last_year': bool(case['smoked_last_year']),
+            # 'hospitalization_last_5_years': bool(case['hospitalization_last_5_years']),
+            # 'lab_tests_last_5_years': bool(case['lab_tests_last_5_years']),
+            # 'accident_poisoning_last_5_years': bool(case['accident_poisoning_last_5_years']),
+            # 'has_disability': bool(case['has_disability']),
+            # 'has_serious_illness': bool(case['has_serious_illness']),
+            # 'receiving_treatment': bool(case['receiving_treatment']),
+            # 'family_medical_history': bool(case['family_medical_history']),
+            # 'is_pregnant': bool(case['is_pregnant']),
+            'gender': case['gender'],
+            'dob': str(case['dob']),
+            'marital_status': case['marital_status'],
+            'occupation_id': case['occupation_id'],
+            'num_dependents': case['num_dependents'],
+
+            'holder_income_range': case['holder_income_range'],
+            'holder_relationship_to_insured': case['holder_relationship_to_insured'],
+
+            'insurance_period': case['insurance_period'],
+            'has_existing_health_insurance': case['has_existing_health_insurance'],
+            'high_risk_hobby': case['high_risk_hobby'],
+            'nominal_received': case['nominal_received'],
+            'beneficiary_relationship': case['beneficiary_relationship'],
+            'overseas_medical_plans': case['overseas_medical_plans'],
+            'coverage_regions': json.loads(case['coverage_regions']),
+            'financial_goals': json.loads(case['financial_goals']),
+            'height': case['height'],
+            'weight': case['weight'],
+            'weight_change_last_year': case['weight_change_last_year'],
+            'smoked_last_year': case['smoked_last_year'],
+            'hospitalization_last_5_years': case['hospitalization_last_5_years'],
+            'lab_tests_last_5_years': case['lab_tests_last_5_years'],
+            'accident_poisoning_last_5_years': case['accident_poisoning_last_5_years'],
+            'has_disability': case['has_disability'],
+            'has_serious_illness': case['has_serious_illness'],
+            'receiving_treatment': case['receiving_treatment'],
+            'family_medical_history': case['family_medical_history'],
+            'is_pregnant':case['is_pregnant'],
+        }
+
+        preprocessed = preprocess_case(input_data)
+
+        results.append({
+            'id':           case['id'],
+            'product_id':   case['product_id'],
+            'product_name': case['product_name'],
+            'feature_vector': preprocessed['feature_vector'],
+        })
+
+    return results
+
 # SIMILARITY ALGORITHMS
-def euclidean_distance(new_case: np.ndarray, historical_cases: np.ndarray, case_info, k: int = 5) -> List[Dict]:
+def euclidean(new_vector: np.ndarray, historical_vectors: np.ndarray, case_info, k: int = 5) -> List[Dict]:
     similarities = []
     results = []
 
-    for i, hist_case in enumerate(historical_cases):
-        # Calculate squared differences for each feature
-        diff_squared = (new_case - hist_case) ** 2
+    for i, hist_vector in enumerate(historical_vectors):
+        diff_squared = (new_vector - hist_vector) ** 2
         sum_squared = np.sum(diff_squared)
         distance = np.sqrt(sum_squared)
         similarity = 1 / (1 + distance)
@@ -178,19 +300,14 @@ def euclidean_distance(new_case: np.ndarray, historical_cases: np.ndarray, case_
 
     return results[:k]
 
-def weighted_euclidean(new_case: np.ndarray, historical_cases: np.ndarray, case_info, k: int = 5) -> List[Dict]:
-    conn = connect_db()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT feature_name, weight FROM weights ORDER BY id")
-    weight_rows = cursor.fetchall()
-    conn.close()
-
-    weights = np.array([float(row['weight']) for row in weight_rows])
+def weighted_euclidean(new_vector: np.ndarray, historical_vectors: np.ndarray, case_info, k: int = 5) -> List[Dict]:
+    get_weights = get_feature_weights()
+    weights = np.array([weight['weight'] for weight in get_weights])
 
     similarities = []
 
-    for i, hist_case in enumerate(historical_cases):
-        diff = new_case - hist_case
+    for i, hist_vector in enumerate(historical_vectors):
+        diff = new_vector - hist_vector
         weighted_diff_squared = weights * (diff ** 2)
         sum_weighted_squared = np.sum(weighted_diff_squared)
         distance = np.sqrt(sum_weighted_squared)
@@ -215,10 +332,9 @@ def weighted_euclidean(new_case: np.ndarray, historical_cases: np.ndarray, case_
         if product_id not in [r['product_id'] for r in results]:
             results.append(case)
 
-    cursor.close()
     return results[:k]
 
-def random_forest_proximity(new_case: np.ndarray, historical_cases: np.ndarray, case_info, k: int = 5) -> List[Dict]:
+def random_forest_proximity(new_vector: np.ndarray, historical_vectors: np.ndarray, case_info, k: int = 5) -> List[Dict]:
     script_dir = os.path.dirname(__file__)
     model_path = os.path.join(script_dir, 'models', 'rf_model.pkl')
     cache_path = os.path.join(script_dir, 'models', 'leaf_cache.json')
@@ -233,7 +349,7 @@ def random_forest_proximity(new_case: np.ndarray, historical_cases: np.ndarray, 
         leaf_cache = json.load(f)
 
     # Get leaf nodes for new case
-    new_leaves = rf_model.apply(new_case.reshape(1, -1))[0]
+    new_leaves = rf_model.apply(new_vector.reshape(1, -1))[0]
 
     # NOW IT'S A DICTIONARY!
     leaf_assignments_dict = leaf_cache['leaf_assignments']
@@ -241,13 +357,13 @@ def random_forest_proximity(new_case: np.ndarray, historical_cases: np.ndarray, 
 
     similarities = []
 
-    for i, hist in enumerate(historical_cases):
+    for i, hist_vector in enumerate(historical_vectors):
         case_id_str = str(case_info[i]['id'])
 
         if case_id_str in leaf_assignments_dict:
             hist_leaves = np.array(leaf_assignments_dict[case_id_str])
         else:
-            hist_leaves = rf_model.apply(hist.reshape(1, -1))[0]
+            hist_leaves = rf_model.apply(hist_vector.reshape(1, -1))[0]
 
         matches = np.sum(new_leaves == hist_leaves)
         proximity = matches / n_trees
@@ -280,6 +396,7 @@ def random_forest_proximity(new_case: np.ndarray, historical_cases: np.ndarray, 
     results = []
     for case in similarities:
         product_id = case['product_id']
+        #if product_id not in results:
         if product_id not in [r['product_id'] for r in results]:
             results.append(case)
 
@@ -354,15 +471,6 @@ def aggregate_results(euclidean: List[Dict], weighted: List[Dict], rf: List[Dict
 
     return recommendations
 
-def get_feature_weights():
-    conn = connect_db()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT feature_name, weight FROM weights ORDER BY id")
-    weights = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return [{'feature': w['feature_name'], 'weight': float(w['weight'])} for w in weights]
-
 # MAIN
 def main(input_file: str, output_file: str):
     """Main CBR system"""
@@ -374,44 +482,36 @@ def main(input_file: str, output_file: str):
     with open(input_file, 'r') as f:
         input_data = json.load(f)
 
-    preprocessed = preprocess_case(input_data)
+    preprocessed_new_case = preprocess_case(input_data)
 
-    # Load historical cases
-    conn = connect_db()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("""
-        SELECT c.*, p.name as product_name
-        FROM cases c
-        JOIN products p ON c.product_id = p.id
-    """)
-    historical_cases = cursor.fetchall()
+    historical_cases = load_historical_cases()
+    print(f"    {len(historical_cases)} cases loaded")
 
     # Extract feature vectors
     historical_vectors = []
     case_info = []
     for case in historical_cases:
-        vector = json.loads(case['feature_vector'])
-        historical_vectors.append(vector)
+        historical_vectors.append(case['feature_vector'])
         case_info.append({
             'id': case['id'],
             'product_id': case['product_id'],
             'product_name': case['product_name'],
-            'feature_vector': vector
+            'feature_vector': case['feature_vector']
         })
 
     historical_vectors = np.array(historical_vectors)
-    new_case_vector = np.array(preprocessed['feature_vector'])
+    new_case_vector = np.array(preprocessed_new_case['feature_vector'])
 
     start = datetime.now()
-    euclidean_results = euclidean_distance(new_case_vector, historical_vectors, case_info, k=5)
+    euclidean_results = euclidean(new_case_vector, historical_vectors, case_info)
     euc_time = (datetime.now() - start).total_seconds() * 1000
 
     start = datetime.now()
-    weighted_results = weighted_euclidean(new_case_vector, historical_vectors, case_info, k=5)
+    weighted_results = weighted_euclidean(new_case_vector, historical_vectors, case_info)
     weighted_time = (datetime.now() - start).total_seconds() * 1000
 
     start = datetime.now()
-    rf_results = random_forest_proximity(new_case_vector, historical_vectors, case_info, k=5)
+    rf_results = random_forest_proximity(new_case_vector, historical_vectors, case_info)
     rf_time = (datetime.now() - start).total_seconds() * 1000
 
     print("[6/6] Aggregating...")
@@ -422,8 +522,8 @@ def main(input_file: str, output_file: str):
     output = {
         'success': True,
         'input_data': input_data,
-        'feature_vector': preprocessed['feature_vector'],
-        'health_risk_score': preprocessed['health_risk_score'],
+        'feature_vector': preprocessed_new_case['feature_vector'],
+        'health_risk_score': preprocessed_new_case['health_risk_score'],
         'recommendations': recommendations,
         'execution_time': {
             'euclidean': round(euc_time, 2),
@@ -434,23 +534,18 @@ def main(input_file: str, output_file: str):
         'algorithm_details': {
             'euclidean': {
                 'top_5_matches': euclidean_results,
-                # 'formula': 'd(x,y) = sqrt(sum((xi - yi)^2))',
-                # 'similarity_formula': 'similarity = 1 / (1 + distance)',
             },
             'weighted_euclidean': {
                 'top_5_matches': weighted_results,
-                # 'formula': 'dw(x,y) = sqrt(sum(wi * (xi - yi)^2))',
-                # 'similarity_formula': 'similarity = 1 / (1 + weighted_distance)',
                 'weights_used': get_feature_weights()
             },
             'random_forest': {
                 'top_5_matches': rf_results,
-                # 'proximity_formula': 'proximity = matching_leaves / total_trees',
-                'model_info': {
-                    'n_estimators': 100,
-                    'max_depth': 10,
-                    'random_state': 42
-                }
+                # 'model_info': {
+                #     'n_estimators': 100,
+                #     'max_depth': 10,
+                #     'random_state': 42
+                # }
             }
         }
     }

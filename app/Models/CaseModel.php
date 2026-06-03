@@ -13,12 +13,15 @@ class CaseModel extends Model
 
     protected $fillable = [
         'customer_id',
+        'policy_holder_id',
+        'holder_is_insured',
+        'holder_relationship_to_insured',
         'product_id',
         'agent_id',
         'financial_goals',
         'insurance_period',
-        'premium_payment_period',
         'overseas_medical_plans',
+        'coverage_regions',
         'has_existing_health_insurance',
         'high_risk_hobby',
         'nominal_received',
@@ -53,6 +56,7 @@ class CaseModel extends Model
         'financial_goals' => 'array',
         'feature_vector' => 'array',
         'overseas_medical_plans' => 'boolean',
+        'coverage_regions' => 'array',
         'has_existing_health_insurance' => 'boolean',
         'high_risk_hobby' => 'boolean',
         'nominal_received' => 'decimal:2',
@@ -78,10 +82,14 @@ class CaseModel extends Model
         'all_recommendations' => 'array',
     ];
 
-    // Relationships
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function policyHolder()
+    {
+        return $this->belongsTo(PolicyHolder::class, 'policy_holder_id');
     }
 
     public function product()

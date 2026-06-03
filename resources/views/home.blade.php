@@ -7,13 +7,17 @@
     <!-- Hero Section -->
     <div class="text-center py-20">
         <div class="inline-block mb-6">
-            <div class="w-20 h-20 gold-gradient rounded-2xl flex items-center justify-center gold-border-glow">
-                <span class="text-black font-bold text-4xl">C</span>
+            <div class="w-20 h-20 rounded-lg overflow-hidden bg-white flex items-center justify-center">
+                <img
+                    src="{{ asset('images/marvel_logo.jpeg') }}"
+                    alt="Insurance CBR Logo"
+                    class="w-full h-full object-cover"
+                >
             </div>
         </div>
-        <h1 class="text-5xl font-bold text-gray-900 mb-4">Insurance CBR System</h1>
+        <h1 class="text-5xl font-bold text-gray-900 mb-4">Marvel Agency</h1>
         <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            AI-Powered Insurance Recommendation Engine
+            An agency specialized with finding your perfect insurance product based on your needs.
         </p>
 
         @auth

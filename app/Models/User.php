@@ -17,6 +17,7 @@ class User extends Authenticatable
         'password',
         'role',
         'active',
+        'policy_holder_id',
         'created_by',
     ];
 
