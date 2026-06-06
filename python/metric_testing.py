@@ -23,21 +23,16 @@ splits = [
     ('70_30', 0.3)
 ]
 
-rf_parameter_list = [
-     # ── Vary n_estimators ────────────────────────────────────────────────────
-    {'n_estimators': 100, 'max_depth': 10, 'min_samples_split': 2, 'min_samples_leaf': 1},
-    {'n_estimators': 200, 'max_depth': 10, 'min_samples_split': 2, 'min_samples_leaf': 1},
-    {'n_estimators': 300, 'max_depth': 10, 'min_samples_split': 2, 'min_samples_leaf': 1},
-    # ── Vary max_depth ───────────────────────────────────────────────────────
-    {'n_estimators': 100, 'max_depth':  5, 'min_samples_split': 2, 'min_samples_leaf': 1},
-    {'n_estimators': 100, 'max_depth': 15, 'min_samples_split': 2, 'min_samples_leaf': 1},
-    {'n_estimators': 100, 'max_depth': None,'min_samples_split':2, 'min_samples_leaf': 1},
-    # ── Vary min_samples_split ───────────────────────────────────────────────
-    {'n_estimators': 100, 'max_depth': 10, 'min_samples_split': 3, 'min_samples_leaf': 1},
-    {'n_estimators': 100, 'max_depth': 10, 'min_samples_split': 4, 'min_samples_leaf': 1},
-    # ── Vary min_samples_leaf ────────────────────────────────────────────────
-    {'n_estimators': 100, 'max_depth': 10, 'min_samples_split': 2, 'min_samples_leaf': 2},
-    {'n_estimators': 100, 'max_depth': 10, 'min_samples_split': 2, 'min_samples_leaf': 3}
+rf_parameter_list = [{
+        'n_estimators': n,
+        'max_depth': depth,
+        'max_features': features,
+        'min_samples_leaf': msl,
+        }
+    for n in [100, 200, 300]
+    for depth in [5, 10, None]
+    for features in ['sqrt', 'log2', None]
+    for msl in [1, 2, 3]
 ]
 
 def split_data(all_cases, test_ratio):
@@ -93,7 +88,7 @@ def euclidean_or_weighted(training_cases, testing_cases, algorithm_chosen, all_p
         'algorithm_name': algorithm_chosen,
         'predictions': predictions,
         'metrics': metrics,
-        'traning_size': len(training_cases),
+        'training_size': len(training_cases),
         'testing_size': len(testing_cases)
     }
 
@@ -105,7 +100,12 @@ def random_forest(training_cases, testing_cases, all_product_ids, rf_parameter):
     training_vectors = np.array([case['feature_vector'] for case in training_cases])
     training_labels = np.array([case['product_id'] for case in training_cases])
 
-    rf = RandomForestClassifier(**rf_parameter, random_state=42)
+    rf = RandomForestClassifier(
+        n_estimators=rf_parameter['n_estimators'],
+        max_depth=rf_parameter['max_depth'],
+        max_features=rf_parameter['max_features'],
+        min_samples_leaf=rf_parameter['min_samples_leaf'],
+        random_state=42)
     rf.fit(training_vectors, training_labels)
 
     leaf_assignments_all = rf.apply(training_vectors)
@@ -169,24 +169,27 @@ def random_forest(training_cases, testing_cases, all_product_ids, rf_parameter):
         'rf_parameter': rf_parameter,
         'predictions': predictions,
         'metrics': metrics,
-        'traning_size': len(training_cases),
+        'training_size': len(training_cases),
         'testing_size': len(testing_cases)
     }
 
     return results
 
 def calculate_metrics(predictions, all_product_ids):
-
     tp = 0  # Correct product in top-1
     fp = 0  # Wrong product in top-1
     tn = 0  # Irrelevant products correctly excluded (not in top 1)
     fn = 0  # Correct product not in top-1
     reciprocal_ranks = []
+    hit_rate_at_3 = []
+    hit_rate_at_5 = []
+    rank_list = []
 
     for pred in predictions:
         correct_id = pred['correct_product_id']
         top_ids = pred['top_predictions_ids']
 
+        #confusion matrix
         if top_ids[0] == correct_id:
             tp += 1
         else:
@@ -199,13 +202,30 @@ def calculate_metrics(predictions, all_product_ids):
             else:
                 fn += 1
 
-        for product_id in top_ids:
-            if product_id == correct_id:
-                rank = top_ids.index(product_id) + 1
-                reciprocal_ranks.append(1.0 / rank)
-
-        if correct_id not in top_ids:
+        #mrr
+        if correct_id in top_ids:
+            rank = top_ids.index(correct_id) + 1
+            reciprocal_ranks.append(1.0 / rank)
+        else:
             reciprocal_ranks.append(0.0)
+
+        #hit rate@3
+        if correct_id in top_ids[:3]:
+            hit_rate_at_3.append(1.0)
+        else:
+            hit_rate_at_3.append(0.0)
+
+        #hit rate@5
+        if correct_id in top_ids[:5]:
+            hit_rate_at_5.append(1.0)
+        else:
+            hit_rate_at_5.append(0.0)
+
+        #rank list
+        if correct_id in top_ids:
+            rank_list.append(top_ids.index(correct_id) + 1)
+        else:
+            rank_list.append(len(all_product_ids) + 1)
 
     print(f"\nConfusion Matrix:")
     print(f"  True Positives (TP):  {tp}")
@@ -216,30 +236,26 @@ def calculate_metrics(predictions, all_product_ids):
     precision = tp / (tp + fp)
     recall = tp / (tp + fn)
     f1_score = 2 * (precision * recall) / (precision + recall)
-    accuracy = (tp + tn) / (tp + tn + fp + fn)
-    mrr = np.mean(reciprocal_ranks)
 
     results = {
         'tp': tp,
         'fp': fp,
         'tn': tn,
         'fn': fn,
-        'precision_score': precision,
-        'recall': recall,
         'f1_score': f1_score,
-        'accuracy': accuracy,
-        'mrr': mrr
+        'mrr': np.mean(reciprocal_ranks),
+        'hr_at_3': np.mean(hit_rate_at_3),
+        'hr_at_5': np.mean(hit_rate_at_5),
+        'mean_rank': np.mean(rank_list)
     }
 
     return results
 
-#fix this later once i know everything i want
 def save_result(cursor, conn, result):
     m       = result['metrics']
     rf_p    = result.get('rf_parameter', {})
-    total_cases = result['traning_size'] + result['testing_size']
+    total_cases = result['training_size'] + result['testing_size']
 
-    #do we need total_test_cases?
     cursor.execute("""
         INSERT INTO algorithm_test_results (
             algorithm_name,
@@ -249,25 +265,25 @@ def save_result(cursor, conn, result):
             total_test_cases,
             n_estimators,
             max_depth,
-            min_samples_split,
+            max_features,
             min_samples_leaf,
             true_positives,
             false_positives,
             true_negatives,
             false_negatives,
-            precision_score,
-            recall,
             f1_score,
-            accuracy,
             mrr,
-            avg_execution_time_ms,
-            total_execution_time_ms,
+            hr_at_3,
+            hr_at_5,
+            mean_rank,
+            avg_time_taken,
+            total_time_taken,
             detailed_results,
             created_at,
             updated_at
         ) VALUES (
-            %s,%s,%s,%s,%s,%s,%s,%s,
-            %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+            %s,%s,%s,%s,%s,%s,%s,%s,%s,
+            %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
             NOW(), NOW()
         )
     """, (
@@ -278,31 +294,29 @@ def save_result(cursor, conn, result):
         total_cases,
         rf_p.get('n_estimators'),
         rf_p.get('max_depth'),
-        rf_p.get('min_samples_split'),
+        rf_p.get('max_features'),
         rf_p.get('min_samples_leaf'),
         m['tp'], m['fp'], m['tn'], m['fn'],
-        m['precision_score'], m['recall'], m['f1_score'], m['accuracy'],
-        m['mrr'],
-        m['avg_retrieval_time_ms'],
-        m['total_retrieval_time_ms'],
+        m['f1_score'], m['mrr'], m['hr_at_3'], m['hr_at_5'], m['mean_rank'],
+        m['avg_time_taken'], m['total_time_taken'],
         json.dumps(result['predictions']),
     ))
     conn.commit()
 
 def print_metrics(label, r):
     print(f"\n{label} Metrics:")
-    print(f"    Precision   : {r['precision_score']*100:6.2f}%")
-    print(f"    Recall      : {r['recall']*100:6.2f}%")
     print(f"    F1-Score    : {r['f1_score']*100:6.2f}%")
-    print(f"    Accuracy    : {r['accuracy']*100:6.2f}%")
     print(f"    MRR         : {r['mrr']*100:6.2f}%")
+    print(f"    HR@3        : {r['hr_at_3']*100:6.2f}%")
+    print(f"    HR@5        : {r['hr_at_5']*100:6.2f}%")
+    print(f"    Mean Rank   : {r['mean_rank']:6.2f}")
     print(f"    Avg time    : {r['avg_time_taken']:.2f} ms/case")
     print(f"    (TP={r['tp']} FP={r['fp']} TN={r['tn']} FN={r['fn']})")
 
 def print_comparison_table(all_results: list):
     header = (f"{'Algorithm':<22} {'Split':<8} {'RF params':<30} "
             f"{'P':>6} {'R':>6} {'F1':>6} {'Acc':>6} "
-            f"{'MRR':>6} {'P@5':>6} {'ms':>7}")
+            f"{'MRR':>6} {'ms':>7}")
     print("\n" + "=" * len(header))
     print("FULL COMPARISON TABLE")
     print("=" * len(header))
@@ -316,14 +330,13 @@ def print_comparison_table(all_results: list):
             rp = r.get('rf_parameter', {})
             rf_str = (f"n={rp.get('n_estimators')} "
                     f"d={rp.get('max_depth')} "
-                    f"mss={rp.get('min_samples_split')} "
+                    f"mss={rp.get('max_features')} "
                     f"msl={rp.get('min_samples_leaf')}")
 
-        print(f"{r['algorithm']:<22} {r['split_label']:<8} {rf_str:<30} "
-            f"{m['precision_score']*100:6.2f} {m['recall']*100:6.2f} "
-            f"{m['f1_score']*100:6.2f} {m['accuracy']*100:6.2f} "
+        print(f"{r['algorithm_name']:<22} {r['split_label']:<8} {rf_str:<30} "
+            f"{m['f1_score']*100:6.2f} "
             f"{m['mrr']*100:6.2f} "
-            f"{m['avg_retrieval_time_ms']:7.2f}")
+            f"{m['avg_time_taken']:7.2f}")
 
     print("=" * len(header))
 
@@ -374,7 +387,7 @@ def main():
             print(f"\n[RF {i}/{len(rf_parameter_list)}]:")
             print(f"  n_estimators: {rf_parameter['n_estimators']}")
             print(f"  max_depth: {rf_parameter['max_depth']}")
-            print(f"  min_samples_split: {rf_parameter['min_samples_split']}")
+            print(f"  max_features: {rf_parameter['max_features']}")
             print(f"  min_samples_leaf: {rf_parameter['min_samples_leaf']}")
 
             try:
@@ -385,6 +398,8 @@ def main():
                 all_results.append(result)
             except Exception as e:
                 print(f" ERROR: {e}")
+
+
 
     cursor.close()
     conn.close()

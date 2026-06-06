@@ -80,7 +80,7 @@ class RecommendationController extends Controller
         try {
             DB::beginTransaction();
 
-            // Create or find customer
+            // Create or find
             $customer = Customer::firstOrCreate([
                 'name' => $validated['name'],
                 'dob' => $validated['dob'],
@@ -98,7 +98,7 @@ class RecommendationController extends Controller
                 'income_range' => $validated['holder_income_range'],
             ]);
 
-            // Prepare data for Python CBR
+            // data input for cbr system
             $cbrInput = [
                 'gender' => $customer->gender,
                 'dob' => $customer->dob->format('Y-m-d'),
@@ -140,7 +140,7 @@ class RecommendationController extends Controller
                 'health_details' => $validated['health_details'] ?? null
             ];
 
-            // Call Python CBR system
+            // Call CBR system
             $cbrResult = $this->executePythonCBR($cbrInput);
 
             if (!$cbrResult['success']) {
@@ -242,11 +242,11 @@ class RecommendationController extends Controller
      */
     protected function executePythonCBR(array $data): array
     {
-        // Create temp files
+        // temp files
         $inputFile = storage_path('app/temp/cbr_input_' . uniqid() . '.json');
         $outputFile = storage_path('app/temp/cbr_output_' . uniqid() . '.json');
 
-        // Ensure temp directory exists
+        // temp directory exists
         $tempDir = storage_path('app/temp');
         if (!is_dir($tempDir)) {
             mkdir($tempDir, 0755, true);
@@ -308,7 +308,7 @@ class RecommendationController extends Controller
             $query = CaseModel::with(['customer', 'product', 'agent'])
                 ->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc');
 
-            // Role-based scoping
+            // need to change to policy holder for client
             if ($user->role === 'agent') {
                 $query->where('agent_id', $user->id);
             } elseif ($user->role === 'client') {

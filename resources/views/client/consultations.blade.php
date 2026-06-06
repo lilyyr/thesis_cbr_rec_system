@@ -17,7 +17,7 @@
                         <div class="flex justify-between items-center">
                             <div>
                                 <h3 class="text-xl font-bold">{{ $consultation->product->name }}</h3>
-                                <p class="text-blue-100 text-sm">Recommended on {{ $consultation->created_at->format('M d, Y') }}</p>
+                                <p class="text-blue-100 text-sm">Recommended on {{ $consultation->created_at?->format('M d, Y') ?? 'Unknown Date' }}</p>
                             </div>
                             <div class="text-right">
                                 <div class="text-3xl font-bold">

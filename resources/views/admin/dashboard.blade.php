@@ -114,7 +114,7 @@
                                 <div class="flex-1">
                                     <div class="font-semibold text-gray-900">{{ $consultation->customer->name }}</div>
                                     <div class="text-sm text-gray-600">{{ $consultation->product->name }}</div>
-                                    <div class="text-xs text-gray-500 mt-1">{{ $consultation->created_at->diffForHumans() }}</div>
+                                    <div class="text-xs text-gray-500 mt-1">{{ $consultation->created_at ? $consultation->created_at->diffForHumans() : 'Unknown date' }}</div>
                                 </div>
                                 <div class="text-right mr-4">
                                     @php

@@ -18,13 +18,12 @@ def load_results():
     cursor.close()
     conn.close()
     for row in rows:
-        for col in ['precision_score','recall','f1_score','accuracy','mrr','avg_execution_time_ms']:
+        for col in ['precision_score','recall','f1_score','accuracy','mrr','avg_time_taken']:
             row[col] = float(row[col] or 0)
     return rows
 
 rows    = load_results()
 splits  = ['80_20', '70_30']
-
 metrics = ['precision_score', 'recall', 'f1_score', 'accuracy', 'mrr', 'hr_at_3', 'hr_at_5']
 mlabels = ['Precision', 'Recall', 'F1', 'Accuracy', 'MRR', 'HR@3', 'HR@5',]
 

@@ -276,28 +276,23 @@ class AdminController extends Controller
 
     public function algorithmTesting()
     {
-        $testCaseCount = DB::table('test_case')->count();
 
-        $latestResults = DB::table('algorithm_test_results')
-            ->orderBy('test_run_date', 'desc')
-            ->limit(10)
+        $rawData = DB::table('algorithm_test_results')
+            ->orderBy('split_ratio')
+            ->orderBy('algorithm_name')
+            ->orderBy('created_at', 'desc')
             ->get();
 
         $comparisonData = DB::table('algorithm_test_results')
             ->select('algorithm_name')
-            ->selectRaw('AVG(precision) as avg_precision')
-            ->selectRaw('AVG(recall) as avg_recall')
             ->selectRaw('AVG(f1_score) as avg_f1')
-            ->selectRaw('AVG(accuracy) as avg_accuracy')
-            ->selectRaw('AVG(precision_at_5) as avg_p_at_5')
             ->selectRaw('AVG(mrr) as avg_mrr')
-            ->selectRaw('AVG(avg_execution_time_ms) as avg_time')
+            ->selectRaw('AVG(avg_time_taken) as avg_time')
             ->groupBy('algorithm_name')
             ->get();
 
         return view('admin.algorithm-testing', compact(
-            'testCaseCount',
-            'latestResults',
+            'rawData',
             'comparisonData'
         ));
     }
@@ -305,7 +300,7 @@ class AdminController extends Controller
     public function runTests()
     {
         $pythonPath = env('PYTHON_PATH', 'python');
-        $scriptPath = base_path('python/test_algorithms.py');
+        $scriptPath = base_path('python/metric_testing.py');
 
         $command = sprintf('%s %s 2>&1', $pythonPath, escapeshellarg($scriptPath));
 

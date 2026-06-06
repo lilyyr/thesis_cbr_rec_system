@@ -28,11 +28,6 @@ class WeightSeeder extends Seeder
                 'description' => 'Marital status'
             ],
             [
-                'feature_name' => 'income',
-                'weight' => 0.10,
-                'description' => 'Income'
-            ],
-            [
                 'feature_name' => 'occupation_risk',
                 'weight' => 0.08,
                 'description' => 'Occupation risk level'
@@ -55,9 +50,9 @@ class WeightSeeder extends Seeder
                 'description' => 'Insurance period'
             ],
             [
-                'feature_name' => 'premium_payment_period',
-                'weight' => 0.05,
-                'description' => 'Premium payment period'
+                'feature_name' => 'health_risk_score',
+                'weight' => 0.12,
+                'description' => 'Health risk score'
             ],
             [
                 'feature_name' => 'overseas_medical_plans',
@@ -68,11 +63,6 @@ class WeightSeeder extends Seeder
                 'feature_name' => 'existing_health_insurance',
                 'weight' => 0.05,
                 'description' => 'Existing health insurance'
-            ],
-            [
-                'feature_name' => 'health_risk_score',
-                'weight' => 0.12,
-                'description' => 'Health risk score'
             ],
             [
                 'feature_name' => 'high_risk_hobby',
@@ -91,11 +81,6 @@ class WeightSeeder extends Seeder
             ],
 
             // Coverage Regions
-            [
-                'feature_name' => 'coverage_indonesia',
-                'weight' => 0.05,
-                'description' => 'Coverage for Indonesia'
-            ],
             [
                 'feature_name' => 'coverage_asia_exc',
                 'weight' => 0.05,
@@ -170,9 +155,19 @@ class WeightSeeder extends Seeder
                 'description' => 'Savings goal'
             ],
             [
-                'feature_name' => 'goal_wealth_protection',
+                'feature_name' => 'goal_accidents',
                 'weight' => 0.05,
-                'description' => 'Wealth protection goal'
+                'description' => 'Accidents goal'
+            ],
+            [
+                'feature_name' => 'holder_income',
+                'weight' => 0.05,
+                'description' => 'Holder income'
+            ],
+            [
+                'feature_name' => 'holder_relationship_to_insured',
+                'weight' => 0.05,
+                'description' => 'Holder relationship status to insured'
             ],
         ];
 

@@ -282,13 +282,12 @@ ${consultation.overseas_medical_plans ? `
         </h2>
 
         <div class="grid grid-cols-3 gap-4">
+
             ${(() => {
-                const regions = consultation.coverage_regions
-                    ? JSON.parse(consultation.coverage_regions)
-                    : [];
+                const regions = consultation.coverage_regions ? consultation.coverage_regions : [];
 
                 const regionLabels = {
-                    'asia_except_hkg_sg_jpn': 'Asia (Except HKG, SG, JPN)',
+                    'asia_exc_hkg_sg_jpn': 'Asia (Except HKG, SG, JPN)',
                     'hkg_sg_jpn': 'Hong Kong, Singapore, Japan',
                     'europe': 'Europe',
                     'north_america': 'North America',

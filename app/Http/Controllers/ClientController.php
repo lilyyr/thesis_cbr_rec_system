@@ -10,9 +10,6 @@ use Illuminate\Support\Facades\Auth;
 
 class ClientController extends Controller
 {
-    /**
-     * Display list of clients
-     */
     public function index()
     {
         /** @var User $currentUser */
@@ -20,7 +17,6 @@ class ClientController extends Controller
 
         $query = User::where('role', 'client');
 
-        // If agent, only show their own clients
         if ($currentUser->isAgent()) {
             $query->where('created_by', Auth::id());
         }
@@ -30,49 +26,41 @@ class ClientController extends Controller
         return view('clients.index', compact('clients'));
     }
 
-    /**
-     * Show create client form
-     */
     public function create()
     {
         return view('clients.create');
     }
 
-    /**
-     * Store new client
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        $client = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'role' => 'client',
-            'active' => true,
+        User::create([
+            'name'       => $validated['name'],
+            'email'      => $validated['email'],
+            'password'   => Hash::make($validated['password']),
+            'role'       => 'client',
+            'active'     => true,
             'created_by' => Auth::id(),
+            // policy_holder_id is null at registration;
+            // it gets set automatically when the client's first
+            // consultation is submitted (see RecommendationController)
         ]);
 
         return redirect()->route('clients.index')
             ->with('success', 'Client created successfully!');
     }
 
-    /**
-     * Show edit form
-     */
     public function edit($id)
     {
         /** @var User $currentUser */
         $currentUser = Auth::user();
+        $client      = User::where('role', 'client')->findOrFail($id);
 
-        $client = User::where('role', 'client')->findOrFail($id);
-
-        // Check permission
         if ($currentUser->isAgent() && $client->created_by !== Auth::id()) {
             abort(403);
         }
@@ -80,28 +68,23 @@ class ClientController extends Controller
         return view('clients.edit', compact('client'));
     }
 
-    /**
-     * Update client
-     */
     public function update(Request $request, $id)
     {
         /** @var User $currentUser */
         $currentUser = Auth::user();
+        $client      = User::where('role', 'client')->findOrFail($id);
 
-        $client = User::where('role', 'client')->findOrFail($id);
-
-        // Check permission
         if ($currentUser->isAgent() && $client->created_by !== Auth::id()) {
             abort(403);
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $client->id,
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:users,email,' . $client->id,
             'password' => 'nullable|string|min:8|confirmed',
         ]);
 
-        $client->name = $validated['name'];
+        $client->name  = $validated['name'];
         $client->email = $validated['email'];
 
         if (!empty($validated['password'])) {
@@ -114,17 +97,12 @@ class ClientController extends Controller
             ->with('success', 'Client updated successfully!');
     }
 
-    /**
-     * Delete client
-     */
     public function destroy($id)
     {
         /** @var User $currentUser */
         $currentUser = Auth::user();
+        $client      = User::where('role', 'client')->findOrFail($id);
 
-        $client = User::where('role', 'client')->findOrFail($id);
-
-        // Check permission
         if ($currentUser->isAgent() && $client->created_by !== Auth::id()) {
             abort(403);
         }
@@ -135,33 +113,62 @@ class ClientController extends Controller
             ->with('success', 'Client deleted successfully!');
     }
 
+    // ── Client-facing pages ───────────────────────────────────────────────────
+
     /**
-     * Show client's consultations (for client role)
+     * Show all consultations that belong to the logged-in client.
+     *
+     * How the lookup works:
+     *   users.policy_holder_id  →  policy_holders.id
+     *                                      ↕
+     *                           cases.policy_holder_id
+     *
+     * We simply match cases.policy_holder_id to the user's own
+     * policy_holder_id — no email matching needed.
      */
     public function myConsultations()
     {
-        // Get consultations where the customer email matches the logged-in client email
-        // OR where the client was explicitly linked
-        $consultations = CaseModel::with(['customer', 'product', 'agent'])
-            ->whereHas('customer', function($query) {
-                $query->where('email', Auth::user()->email);
-            })
+        /** @var User $user */
+        $user = Auth::user();
+
+        // Client has never been the policy holder on any consultation yet
+        if (!$user->policy_holder_id) {
+            return view('client.consultations', [
+                'consultations' => CaseModel::whereNull('id')->paginate(10), // empty paginator
+                'hasHolder'     => false,
+            ]);
+        }
+
+        $consultations = CaseModel::with(['customer', 'product', 'agent', 'policyHolder'])
+            ->where('policy_holder_id', $user->policy_holder_id)
             ->latest()
             ->paginate(10);
 
-        return view('client.consultations', compact('consultations'));
+        return view('client.consultations', [
+            'consultations' => $consultations,
+            'hasHolder'     => true,
+        ]);
     }
 
     /**
-     * Show specific consultation (for client role)
+     * Show one consultation — only if it belongs to the logged-in client.
      */
     public function showConsultation($id)
     {
-        $consultation = CaseModel::with(['customer', 'product', 'agent'])->findOrFail($id);
+        /** @var User $user */
+        $user = Auth::user();
 
-        // Check if this consultation belongs to this client
-        if ($consultation->customer->email !== Auth::user()->email) {
-            abort(403);
+        $consultation = CaseModel::with([
+            'customer',
+            'product',
+            'agent',
+            'policyHolder',
+        ])->findOrFail($id);
+
+        // Guard: client must have a linked holder, and it must match the case
+        if (!$user->policy_holder_id
+            || (int) $consultation->policy_holder_id !== (int) $user->policy_holder_id) {
+            abort(403, 'You do not have permission to view this consultation.');
         }
 
         return view('client.show', compact('consultation'));

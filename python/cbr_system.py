@@ -99,14 +99,14 @@ def preprocess_case(data: Dict) -> Dict:
     health_risk_norm = normalize_value(health_risk, 0, 25)
     health_ins_encoded = 1 if data['has_existing_health_insurance'] else 0
     high_risk_hobby_encoded = 1 if data['high_risk_hobby'] else 0
-    nominal_received_norm = normalize_value(data['nominal_received'], 0, 1000000000)
+    nominal_received_norm = normalize_value(data['nominal_received'], 0, 5000000000)
 
     relationship_map = {
         'orang tua kandung': 1.0,
         'suami/istri': 0.9,
-        'anak kandung': 0.8,
-        'adik/kakak kandung': 0.7,
-        'nenek/kakek kandung': 0.6,
+        'adik/kakak kandung': 0.8,
+        'nenek/kakek kandung': 0.7,
+        'anak kandung': 0.6,
         'cucu/cicit': 0.5,
         'lainnya': 0.3
     }
@@ -153,9 +153,9 @@ def preprocess_case(data: Dict) -> Dict:
         'diri sendiri': 1.0,
         'suami/istri': 0.9,
         'orang tua kandung': 0.8,
-        'anak kandung': 0.7,
-        'adik/kakak kandung': 0.6,
-        'nenek/kakek kandung': 0.5,
+        'adik/kakak kandung': 0.7,
+        'nenek/kakek kandung': 0.6,
+        'anak kandung': 0.5,
         'cucu/cicit': 0.4,
         'lainnya': 0.2,
     }
@@ -164,11 +164,12 @@ def preprocess_case(data: Dict) -> Dict:
     holder_relationship_encoded = holder_relationship_map.get(holder_relationship, 0.2)
 
     #30D
+    #bmi, nominal
     feature_vector = [
         age_norm, gender_encoded, marital_encoded, occupation_risk_norm,
-        dependents_norm, bmi_norm, ins_period_norm, health_risk_norm,
+        dependents_norm, float(bmi_norm), ins_period_norm, health_risk_norm,
         overseas_encoded, health_ins_encoded, high_risk_hobby_encoded,
-        nominal_received_norm, beneficiary_encoded,
+        float(nominal_received_norm), beneficiary_encoded,
         coverage_asia_exc, coverage_hkg_sg_jpn, coverage_europe,
         coverage_north_america, coverage_south_america, coverage_africa, coverage_oceania,
         goal_life, goal_health, goal_retirement, goal_education,
@@ -241,7 +242,7 @@ def load_historical_cases() -> List[Dict]:
             'nominal_received': case['nominal_received'],
             'beneficiary_relationship': case['beneficiary_relationship'],
             'overseas_medical_plans': case['overseas_medical_plans'],
-            'coverage_regions': json.loads(case['coverage_regions']),
+            'coverage_regions': json.loads(case['coverage_regions'] or '[]'),
             'financial_goals': json.loads(case['financial_goals']),
             'height': case['height'],
             'weight': case['weight'],
@@ -258,6 +259,9 @@ def load_historical_cases() -> List[Dict]:
         }
 
         preprocessed = preprocess_case(input_data)
+
+        # for i in preprocessed['feature_vector']:
+        #     print(type(i))
 
         results.append({
             'id':           case['id'],
@@ -367,7 +371,6 @@ def random_forest_proximity(new_vector: np.ndarray, historical_vectors: np.ndarr
 
         matches = np.sum(new_leaves == hist_leaves)
         proximity = matches / n_trees
-
 
         tree_matches = [
             {

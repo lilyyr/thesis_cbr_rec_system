@@ -32,7 +32,7 @@ class User extends Authenticatable
         'active' => 'boolean',
     ];
 
-    // ===== ROLE CHECK METHODS =====
+    // role checking
 
     public function isAdmin(): bool
     {
@@ -54,7 +54,7 @@ class User extends Authenticatable
         return $this->active === true || $this->active === 1;
     }
 
-    // ===== PERMISSION METHODS =====
+    // permissions
 
     public function canCreateAgents(): bool
     {
@@ -86,7 +86,7 @@ class User extends Authenticatable
         return $this->isAdmin();
     }
 
-    // ===== RELATIONSHIPS =====
+    // relationships
 
     /**
      * Users created by this user
@@ -126,5 +126,10 @@ class User extends Authenticatable
     public function clients()
     {
         return $this->hasMany(User::class, 'created_by')->where('role', 'client');
+    }
+
+    public function policyHolder()
+    {
+        return $this->belongsTo(PolicyHolder::class, 'policy_holder_id');
     }
 }

@@ -10,28 +10,26 @@ matplotlib.use('Agg')  # Non-GUI backend
 
 def visualize_trees(case_id, num_trees=3):
     try:
-        # Paths
         model_path = os.path.join(os.path.dirname(__file__), 'models', 'rf_model.pkl')
         output_dir = os.path.join(os.path.dirname(__file__), '..', 'public', 'tree_visualizations')
 
-        # Create output directory
         os.makedirs(output_dir, exist_ok=True)
 
-        # Load model
         if not os.path.exists(model_path):
             raise Exception("Random Forest model not found. Train the model first.")
 
         rf_model = joblib.load(model_path)
 
         feature_names = [
-            'age_norm', 'gender_enc', 'marital_enc', 'income_norm', 'occupation_risk_norm',
+            'age_norm', 'gender_enc', 'marital_enc', 'occupation_risk_norm',
             'dependents_norm', 'bmi_norm', 'ins_period_norm',
             'health_risk_norm', 'overseas_enc', 'has_health_ins_enc',
-            'high_risk_hobby_enc', 'nominal_received_enc', 'beneficiary_enc',
+            'high_risk_hobby_enc', 'nominal_received_norm', 'beneficiary_enc',
             'coverage_asia_exc', 'coverage_hkg_sg_jpn', 'coverage_europe',
             'coverage_north_america', 'coverage_south_america', 'coverage_africa', 'coverage_oceania',
             'goal_life', 'goal_health', 'goal_retire', 'goal_edu',
-            'goal_critical', 'goal_income', 'goal_savings', 'goal_accidents'
+            'goal_critical', 'goal_income', 'goal_savings', 'goal_accidents',
+            'holder_income_norm', 'holder_relationship_encoded'
         ]
         # Load case data if case_id provided
         case_vector = None

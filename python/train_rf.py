@@ -30,7 +30,9 @@ def train_model(X, y):
     # Train model
     rf = RandomForestClassifier(
         n_estimators=100,
-        max_depth=10,
+        max_depth=5,
+        max_features=None,
+        min_samples_leaf=1,
         random_state=42,
         n_jobs=-1 #this determines speed, -1 means uses all my computer's cores so rf commands runs faster, can tweak this to compare speeds
     )
@@ -71,7 +73,7 @@ def save_model(rf, leaf_cache):
     cache_data = {
         'leaf_assignments': leaf_cache,
         'n_trees': rf.n_estimators,
-        'n_cases': len(leaf_cache_dict)
+        'n_cases': len(leaf_cache)
     }
 
     with open(cache_path, 'w') as f:
