@@ -25,3 +25,4 @@ Homestead.yaml
 Thumbs.db
 /public/tree_visualizations/*
 !public/tree_visualizations/.gitkeep
+python/__pycache__/

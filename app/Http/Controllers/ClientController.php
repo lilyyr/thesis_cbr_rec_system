@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\CaseModel;
+use App\Models\PolicyHolder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
@@ -28,7 +29,9 @@ class ClientController extends Controller
 
     public function create()
     {
-        return view('clients.create');
+        $policyHolders = CaseModel::distinct('policy_holder_id')->where('agent_id',Auth::id())->pluck('policy_holder_id');
+        $policies = PolicyHolder::whereIn('id', $policyHolders)->get();
+        return view('clients.create', compact('policies'));
     }
 
     public function store(Request $request)
@@ -37,6 +40,7 @@ class ClientController extends Controller
             'name'     => 'required|string|max:255',
             'email'    => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
+            'policy_holder_id' => 'required'
         ]);
 
         User::create([
@@ -46,6 +50,7 @@ class ClientController extends Controller
             'role'       => 'client',
             'active'     => true,
             'created_by' => Auth::id(),
+            'policy_holder_id' => $validated['policy_holder_id'] ?? null,
             // policy_holder_id is null at registration;
             // it gets set automatically when the client's first
             // consultation is submitted (see RecommendationController)

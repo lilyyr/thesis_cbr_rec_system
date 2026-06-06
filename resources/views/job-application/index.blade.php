@@ -67,7 +67,7 @@
             </div>
         @endif
 
-        <form method="POST" action="" enctype="multipart/form-data">
+        <form method="POST" action="{{ route('job-application.store') }}" enctype="multipart/form-data">
             @csrf
 
             <div class="grid md:grid-cols-2 gap-6">

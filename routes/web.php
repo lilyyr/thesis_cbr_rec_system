@@ -5,10 +5,14 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\JobApplicationController;
 
 // Public routes
-Route::get('/', function () {return view('home');})->name('home');
-Route::get('/job-application', function () {return view('jobappli');})->name('jobappli');
+Route::get('/', function () {
+    return view('home');
+})->name('home');
+Route::get('/job-application', [JobApplicationController::class, 'index'])->name('job-application.index');
+Route::post('/job-application/store', [JobApplicationController::class, 'store'])->name('job-application.store');
 
 // Authentication routes
 Route::middleware('guest')->group(function () {
@@ -48,6 +52,16 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/algorithm-testing', [AdminController::class, 'algorithmTesting'])->name('algorithm-testing');
     Route::post('/algorithm-testing/run', [AdminController::class, 'runTests'])->name('algorithm-testing.run');
     Route::get('/algorithm-testing/results/{id}', [AdminController::class, 'testResults'])->name('algorithm-testing.results');
+
+    // Metric Visualization
+    Route::get('/metrics/index', [AdminController::class, 'metrics'])->name('metrics.index');
+
+    // Job application management
+    Route::get('/job-application/admin', [JobApplicationController::class, 'adminIndex'])->name('job-application.admin.index');
+    Route::get('/job-application/admin/{id}', [JobApplicationController::class, 'adminShow'])->name('job-application.admin.show');
+    Route::put('/job-application/admin/{id}', [JobApplicationController::class, 'adminUpdate'])->name('job-application.admin.update');
+    Route::delete('/job-application/admin/{id}', [JobApplicationController::class, 'adminDelete'])->name('job-application.admin.delete');
+    Route::get('/job-application/{id}/download-resume', [JobApplicationController::class, 'downloadResume'])->name('job-application.resume.download');
 });
 
 // Agent & Admin routes (can use CBR system)
@@ -59,12 +73,12 @@ Route::middleware(['auth', 'role:admin,agent'])->group(function () {
     // Route::get('/consultations/{id}/process', [ConsultationController::class, 'process'])->name('consultations.process');
     // Route::post('consultations/{id}/generate-trees', [ConsultationController::class, 'generateTreeVisualizations'])->name('consultations.generate-trees');
 
-    Route::get('/consultations', function() {return view('consultations.index');})->name('consultations.index');
-    Route::get('/consultations/create', function() {
-        $occupations = \App\Models\Occupation::orderBy('name')->get();
-        return view('consultations.create', compact('occupations'));})->name('consultations.create');
-    Route::get('/consultations/{id}', function($id) {return view('consultations.show', ['consultationId' => $id]);})->name('consultations.show');
-    Route::get('/consultations/{id}/process', function($id) {return view('consultations.process', ['consultationId' => $id]);})->name('consultations.process');
+    Route::controller(ConsultationController::class)->prefix('consultations')->name('consultations.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/create', 'create')->name('create');
+        Route::get('/{id}', 'show')->name('show');
+        Route::get('/{id}/process', 'process')->name('process');
+    });
 
     // Client management
     Route::resource('clients', ClientController::class);

@@ -22,6 +22,123 @@ class RecommendationController extends Controller
      */
     public function getRecommendation(Request $request)
     {
+        if ($request->input('action') === 'draft') {
+            // 1. Validate ONLY the Customer and Policy Holder required fields
+            $draftValidator = Validator::make($request->all(), [
+                'name' => 'required|string|max:255',
+                'gender' => 'required|in:male,female',
+                'dob' => 'required|date|before:today',
+                'marital_status' => 'required|in:single,married',
+                'income_range' => 'required|in:below_50m,50m_100m,100m_300m,300m_500m,500m_1b,above_1b',
+                'occupation_id' => 'required|exists:occupations,id',
+                'num_dependents' => 'required|integer|min:0',
+
+                'holder_is_insured' => 'required|boolean',
+                'holder_name' => 'required|string|max:255',
+                'holder_dob' => 'required|date',
+                'holder_gender' => 'required|in:male,female',
+                'holder_income_range' => 'required|in:below_50m,50m_100m,100m_300m,300m_500m,500m_1b,above_1b',
+            ]);
+
+            if ($draftValidator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot save draft. Customer and Policy Holder details are incomplete.',
+                    'errors' => $draftValidator->errors()
+                ], 422);
+            }
+
+            try {
+                DB::beginTransaction();
+
+                // 2. Create or Find Customer
+                $customer = Customer::firstOrCreate([
+                    'name' => $request->name,
+                    'dob' => $request->dob,
+                    'gender' => $request->gender,
+                    'marital_status' => $request->marital_status,
+                    'occupation_id' => $request->occupation_id,
+                    'income_range' => $request->income_range,
+                    'num_dependents' => $request->num_dependents
+                ]);
+
+                // 3. Create or Find Policy Holder
+                $policyHolder = PolicyHolder::firstOrCreate([
+                    'name' => $request->holder_name,
+                    'dob' => $request->holder_dob,
+                    'gender' => $request->holder_gender,
+                    'income_range' => $request->holder_income_range,
+                ]);
+
+                // 4. Create the Case Draft
+                // We only insert the IDs and the few things we know. 
+                // Everything else MUST be nullable in your database migration!
+                $case = CaseModel::create([
+                    'customer_id' => $customer->id,
+                    'policy_holder_id' => $policyHolder->id,
+                    'agent_id' => Auth::id(),
+
+                    // Use the null coalescing operator (??) to save whatever else they happened to fill out,
+                    // or default to null/false if they left it blank.
+                    'holder_is_insured' => $request->holder_is_insured,
+                    'holder_relationship_to_insured' => $request->holder_relationship_to_insured ?? null,
+                    'product_id' => null,
+                    'financial_goals' => $request->financial_goals ?? [],
+                    'insurance_period' => $request->insurance_period ?? null,
+                    'nominal_received' => $request->nominal_received ?? null,
+                    'overseas_medical_plans' => $request->overseas_medical_plans ?? false,
+                    'coverage_regions' => $request->coverage_regions ?? [],
+                    'has_existing_health_insurance' => $request->has_existing_health_insurance ?? false,
+                    'high_risk_hobby' => $request->high_risk_hobby ?? false,
+                    'beneficiary_name' => $request->beneficiary_name ?? null,
+                    'beneficiary_dob' => $request->beneficiary_dob ?? null,
+                    'beneficiary_gender' => $request->beneficiary_gender ?? null,
+                    'beneficiary_relationship' => $request->beneficiary_relationship ?? null,
+                    'height' => $request->height ?? null,
+                    'weight' => $request->weight ?? null,
+                    'bmi' => null, // Calculate this later upon final submission
+                    'weight_change_last_year' => $request->weight_change_last_year ?? false,
+                    'smoked_last_year' => $request->smoked_last_year ?? false,
+                    'hospitalization_last_5_years' => $request->hospitalization_last_5_years ?? false,
+                    'lab_tests_last_5_years' => $request->lab_tests_last_5_years ?? false,
+                    'accident_poisoning_last_5_years' => $request->accident_poisoning_last_5_years ?? false,
+                    'has_disability' => $request->has_disability ?? false,
+                    'has_serious_illness' => $request->has_serious_illness ?? false,
+                    'receiving_treatment' => $request->receiving_treatment ?? false,
+                    'family_medical_history' => $request->family_medical_history ?? false,
+                    'is_pregnant' => $request->is_pregnant ?? false,
+                    'health_details' => $request->health_details ?? null,
+
+                    // CBR results remain null
+                    'health_risk_score' => null,
+                    'feature_vector' => null,
+                    'euclidean_score' => null,
+                    'weighted_euclidean_score' => null,
+                    'random_forest_score' => null,
+                    'algorithm_details' => null,
+                    'all_recommendations' => null
+                ]);
+
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Draft saved successfully!',
+                    'data' => [
+                        'is_draft' => true,
+                        'case_id' => $case->id
+                    ]
+                ], 200);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('error:', [$e->getMessage()]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to save draft.',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+        }
         // Validate input
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
@@ -226,7 +343,6 @@ class RecommendationController extends Controller
                     'view_process' => route('consultations.process', $case->id)
                 ]
             ], 201);
-
         } catch (\Exception $e) {
             Log::error('API Recommendation error: ' . $e->getMessage());
             return response()->json([
@@ -340,7 +456,6 @@ class RecommendationController extends Controller
                     'last_page'    => $cases->lastPage(),
                 ],
             ]);
-
         } catch (\Exception $e) {
             Log::error('Get history error: ' . $e->getMessage());
             return response()->json([
@@ -430,7 +545,7 @@ class RecommendationController extends Controller
             'top_products' => DB::table('cases')
                 ->join('products', 'cases.product_id', '=', 'products.id')
                 ->select('products.name', DB::raw('COUNT(*) as count'))
-                ->when(Auth::user()->role === 'agent', function($q) {
+                ->when(Auth::user()->role === 'agent', function ($q) {
                     return $q->where('cases.agent_id', Auth::id());
                 })
                 ->groupBy('products.id', 'products.name')

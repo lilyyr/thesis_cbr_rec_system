@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AlgorithmTestResult;
 use App\Models\User;
 use App\Models\Product;
 use App\Models\Weight;
@@ -22,7 +23,7 @@ class AdminController extends Controller
         $total_products = Product::count();
         $active_products = Product::where('active', true)->count();
         $total_agents = User::where('role', 'agent')->count();
-        $active_agents = User::where('role', 'agent')->where ('active', true)->count();
+        $active_agents = User::where('role', 'agent')->where('active', true)->count();
         $total_clients = User::where('role', 'client')->count();
 
         $recent_consultations = CaseModel::with(['customer', 'product', 'agent'])
@@ -326,5 +327,40 @@ class AdminController extends Controller
         return view('admin.test-results', compact('result'));
     }
 
+    public function metrics()
+    {
+        $nEstimators = AlgorithmTestResult::where('algorithm_name', 'random_forest')->whereNull('max_depth')->where('max_features', 'sqrt')->where('min_samples_leaf', '1')->where('split_ratio', '80_20')->orderBy('n_estimators', 'asc')->get(['n_estimators', 'f1_score']);
+        $maxFeatures = AlgorithmTestResult::where('algorithm_name', 'random_forest')->where('n_estimators', 100)->whereNull('max_depth')->where('min_samples_leaf', '1')->where('split_ratio', '80_20')
+            ->get(['max_features', 'f1_score', 'mrr']);
+        $maxDepth = AlgorithmTestResult::where('algorithm_name', 'random_forest')->where('n_estimators', 100)->where('max_features', 'sqrt')->where('min_samples_leaf', '1')->where('split_ratio', '80_20')
+            ->orderBy('max_depth', 'asc')
+            ->get(['max_depth', 'f1_score']);
+        $msl = AlgorithmTestResult::where('algorithm_name', 'random_forest')->where('n_estimators', '100')->whereNull('max_depth')->where('max_features', 'sqrt')->where('split_ratio', '80_20')
+            ->get(['min_samples_leaf', 'f1_score']);
 
+        $euclidean = AlgorithmTestResult::where('algorithm_name', 'euclidean')
+            ->latest()
+            ->first();
+
+        $weighted = AlgorithmTestResult::where('algorithm_name', 'weighted_euclidean')
+            ->latest()
+            ->first();
+
+        $randomForest = AlgorithmTestResult::where('algorithm_name', 'random_forest')
+            ->where('n_estimators', 100)
+            ->where('max_depth', 5)
+            ->whereNull('max_features')
+            ->where('min_samples_leaf', 1)
+            ->where('split_ratio', '80_20')
+            ->first(); 
+
+        $comparison = collect([$euclidean, $weighted, $randomForest])->filter();
+        return view('admin.visualization.index', [
+            'nEstimatorsData' => $nEstimators->toJson(),
+            'maxFeaturesData' => $maxFeatures->toJson(),
+            'maxDepthData' => $maxDepth->toJson(),
+            'mssData' => $msl->toJson(),
+            'comparisonData' => $comparison->toJson()
+        ]);
+    }
 }
