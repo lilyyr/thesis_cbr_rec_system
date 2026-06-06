@@ -1,7 +1,6 @@
 import json
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import f1_score
 import joblib
 import os
 from cbr_system import connect_db, load_historical_cases
@@ -39,9 +38,6 @@ def train_model(X, y):
     )
 
     rf.fit(X, y)
-    y_pred_train = rf.predict(X)
-    train_f1 = f1_score(y, y_pred_train, average='weighted') 
-    print(f"  Training F1-Score: {train_f1:.4f}")
 
     print("Training complete!")
     return rf
