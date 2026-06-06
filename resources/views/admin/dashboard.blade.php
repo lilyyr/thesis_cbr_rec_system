@@ -11,7 +11,7 @@
     </div>
 
     <!-- Stats Grid -->
-    <div class="grid md:grid-cols-4 gap-6 mb-8">
+    <div class="grid md:grid-cols-3 gap-6 mb-8">
         <!-- Total Consultations -->
         <div class="bg-white border border-gray-200 p-6 hover-gold transition">
             <div class="flex justify-between items-start mb-4">
@@ -46,18 +46,6 @@
             </div>
             <div class="text-3xl font-bold text-gray-900">{{ $total_agents }}</div>
             <div class="text-xs text-gray-500 mt-2">{{ $active_agents }} active</div>
-        </div>
-
-        <!-- Customers -->
-        <div class="bg-white border border-gray-200 p-6 hover-gold transition">
-            <div class="flex justify-between items-start mb-4">
-                <div class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Clients</div>
-                <div class="w-10 h-10 bg-black rounded-full flex items-center justify-center">
-                    <span class="text-gold-500 text-lg">👤</span>
-                </div>
-            </div>
-            <div class="text-3xl font-bold text-gray-900">{{ $total_clients }}</div>
-            <div class="text-xs text-gray-500 mt-2">Registered clients</div>
         </div>
     </div>
 
