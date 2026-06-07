@@ -75,10 +75,10 @@
             <!-- Model Training -->
             <div class="bg-white border border-gray-200 p-6">
                 <h3 class="font-bold text-gray-900 mb-4 flex items-center">
-                    <span class="text-gold-500 mr-2">🤖</span> ML Model
+                    <span class="text-gold-500 mr-2">ML Model</span>
                 </h3>
                 <p class="text-sm text-gray-600 mb-4">
-                    Train Random Forest model with current case data for improved accuracy.
+                    Train the Random Forest model with the latest consultations to improve recommendation accuracy.
                 </p>
                 <form action="{{ route('admin.train-model') }}" method="POST">
                     @csrf

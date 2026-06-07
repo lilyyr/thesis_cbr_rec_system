@@ -329,13 +329,13 @@ class AdminController extends Controller
 
     public function metrics()
     {
-        $nEstimators = AlgorithmTestResult::where('algorithm_name', 'random_forest')->whereNull('max_depth')->where('max_features', 'sqrt')->where('min_samples_leaf', '1')->where('split_ratio', '80_20')->orderBy('n_estimators', 'asc')->get(['n_estimators', 'f1_score']);
-        $maxFeatures = AlgorithmTestResult::where('algorithm_name', 'random_forest')->where('n_estimators', 100)->whereNull('max_depth')->where('min_samples_leaf', '1')->where('split_ratio', '80_20')
+        $nEstimators = AlgorithmTestResult::where('algorithm_name', 'random_forest')->whereNull('max_depth')->where('max_features', 'sqrt')->where('min_samples_leaf', '1')->where('split_ratio', '70_30')->orderBy('n_estimators', 'asc')->get(['n_estimators', 'f1_score']);
+        $maxFeatures = AlgorithmTestResult::where('algorithm_name', 'random_forest')->where('n_estimators', 100)->whereNull('max_depth')->where('min_samples_leaf', '1')->where('split_ratio', '70_30')
             ->get(['max_features', 'f1_score', 'mrr']);
-        $maxDepth = AlgorithmTestResult::where('algorithm_name', 'random_forest')->where('n_estimators', 100)->where('max_features', 'sqrt')->where('min_samples_leaf', '1')->where('split_ratio', '80_20')
+        $maxDepth = AlgorithmTestResult::where('algorithm_name', 'random_forest')->where('n_estimators', 100)->where('max_features', 'sqrt')->where('min_samples_leaf', '1')->where('split_ratio', '70_30')
             ->orderBy('max_depth', 'asc')
             ->get(['max_depth', 'f1_score']);
-        $msl = AlgorithmTestResult::where('algorithm_name', 'random_forest')->where('n_estimators', '100')->whereNull('max_depth')->where('max_features', 'sqrt')->where('split_ratio', '80_20')
+        $msl = AlgorithmTestResult::where('algorithm_name', 'random_forest')->where('n_estimators', '100')->whereNull('max_depth')->where('max_features', 'sqrt')->where('split_ratio', '70_30')
             ->get(['min_samples_leaf', 'f1_score']);
 
         $euclidean = AlgorithmTestResult::where('algorithm_name', 'euclidean')
@@ -347,12 +347,12 @@ class AdminController extends Controller
             ->first();
 
         $randomForest = AlgorithmTestResult::where('algorithm_name', 'random_forest')
-            ->where('n_estimators', 100)
+            ->where('n_estimators', 200)
             ->where('max_depth', 5)
             ->whereNull('max_features')
             ->where('min_samples_leaf', 1)
             ->where('split_ratio', '80_20')
-            ->first(); 
+            ->first();
 
         $comparison = collect([$euclidean, $weighted, $randomForest])->filter();
         return view('admin.visualization.index', [

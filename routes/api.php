@@ -29,9 +29,7 @@ Route::post('/login', function (Request $request) {
         ], 401);
     }
 
-    // Delete old tokens
     $user->tokens()->delete();
-    // Create new token
     $token = $user->createToken('api-token')->plainTextToken;
 
     return response()->json([
@@ -50,10 +48,10 @@ Route::post('/login', function (Request $request) {
     ]);
 });
 
-// Protected API routes
+// API
 Route::middleware('auth:sanctum')->group(function () {
 
-    // Get authenticated user
+    // user
     Route::get('/user', function (Request $request) {
         return response()->json([
             'success' => true,
@@ -61,45 +59,32 @@ Route::middleware('auth:sanctum')->group(function () {
         ]);
     });
 
-    // CBR Recommendation API
+    // recommendations
     Route::prefix('recommendations')->group(function () {
-        // Get recommendation for new case
         Route::post('/', [RecommendationController::class, 'getRecommendation'])
             ->middleware('role:admin,agent');
-
-        // Get consultation history
         Route::get('/', [RecommendationController::class, 'getHistory'])
             ->middleware('role:admin,agent,client');
-
-        // Get specific consultation
         Route::get('/{id}', [RecommendationController::class, 'getConsultation'])
             ->middleware('role:admin,agent,client');
     });
 
-    // Tree Visualization API
+    // tree visualization
     Route::prefix('visualizations')->group(function () {
-        // Generate tree visualizations
         Route::post('/trees/{caseId}', [TreeController::class, 'generateTrees'])
             ->middleware('role:admin,agent');
-
-        // Get visualization status
         Route::get('/trees/{caseId}', [TreeController::class, 'getTreeStatus'])
             ->middleware('role:admin,agent');
     });
 
-    // Model Management API (Admin only)
+    // model
     Route::prefix('model')->middleware('role:admin')->group(function () {
-        // Train Random Forest model
         Route::post('/train', [ModelController::class, 'train']);
-
-        // Get model status
         Route::get('/status', [ModelController::class, 'status']);
-
-        // Get model metrics
         Route::get('/metrics', [ModelController::class, 'metrics']);
     });
 
-    // Statistics API
+    // statistics
     Route::get('/statistics', [RecommendationController::class, 'getStatistics'])
         ->middleware('role:admin,agent');
 });

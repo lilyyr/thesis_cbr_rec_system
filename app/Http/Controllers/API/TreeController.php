@@ -37,19 +37,6 @@ class TreeController extends Controller
 
             exec($command, $output, $returnCode);
 
-            // Find JSON output
-            // $jsonOutput = '';
-            // foreach ($output as $line) {
-            //     if (strpos($line, '{') !== false) {
-            //         $jsonOutput = $line;
-            //         break;
-            //     }
-            // }
-
-            // if (empty($jsonOutput)) {
-            //     $jsonOutput = implode("\n", $output);
-            // }
-
             $jsonOutput = implode("\n", $output);
 
             $result = json_decode($jsonOutput, true);

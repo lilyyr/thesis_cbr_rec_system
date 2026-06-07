@@ -7,14 +7,13 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\JobApplicationController;
 
-// Public routes
 Route::get('/', function () {
     return view('home');
 })->name('home');
 Route::get('/job-application', [JobApplicationController::class, 'index'])->name('job-application.index');
 Route::post('/job-application/store', [JobApplicationController::class, 'store'])->name('job-application.store');
 
-// Authentication routes
+// Authentication
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
@@ -22,7 +21,7 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 
-// Admin routes
+// Admin
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
 
@@ -64,15 +63,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/job-application/{id}/download-resume', [JobApplicationController::class, 'downloadResume'])->name('job-application.resume.download');
 });
 
-// Agent & Admin routes (can use CBR system)
+// Agent & Admin routes
 Route::middleware(['auth', 'role:admin,agent'])->group(function () {
-    // Route::get('/consultations', [ConsultationController::class, 'index'])->name('consultations.index');
-    // Route::get('/consultations/create', [ConsultationController::class, 'create'])->name('consultations.create');
-    // // Route::post('/consultations', [ConsultationController::class, 'store'])->name('consultations.store');
-    // Route::get('/consultations/{id}', [ConsultationController::class, 'show'])->name('consultations.show');
-    // Route::get('/consultations/{id}/process', [ConsultationController::class, 'process'])->name('consultations.process');
-    // Route::post('consultations/{id}/generate-trees', [ConsultationController::class, 'generateTreeVisualizations'])->name('consultations.generate-trees');
-
     Route::controller(ConsultationController::class)->prefix('consultations')->name('consultations.')->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/create', 'create')->name('create');
@@ -84,7 +76,7 @@ Route::middleware(['auth', 'role:admin,agent'])->group(function () {
     Route::resource('clients', ClientController::class);
 });
 
-// Client routes (view only)
+// Client routes
 Route::middleware(['auth', 'role:client'])->prefix('client')->group(function () {
     Route::get('/consultations', [ClientController::class, 'myConsultations'])->name('client.consultations');
     Route::get('/consultations/{id}', [ClientController::class, 'showConsultation'])->name('client.consultations.show');

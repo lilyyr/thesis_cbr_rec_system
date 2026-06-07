@@ -313,33 +313,6 @@ def print_metrics(label, r):
     print(f"    Avg time    : {r['avg_time_taken']:.2f} ms/case")
     print(f"    (TP={r['tp']} FP={r['fp']} TN={r['tn']} FN={r['fn']})")
 
-def print_comparison_table(all_results: list):
-    header = (f"{'Algorithm':<22} {'Split':<8} {'RF params':<30} "
-            f"{'P':>6} {'R':>6} {'F1':>6} {'Acc':>6} "
-            f"{'MRR':>6} {'ms':>7}")
-    print("\n" + "=" * len(header))
-    print("FULL COMPARISON TABLE")
-    print("=" * len(header))
-    print(header)
-    print("-" * len(header))
-
-    for r in all_results:
-        m      = r['metrics']
-        rf_str = ''
-        if r['algorithm'] == 'random_forest':
-            rp = r.get('rf_parameter', {})
-            rf_str = (f"n={rp.get('n_estimators')} "
-                    f"d={rp.get('max_depth')} "
-                    f"mss={rp.get('max_features')} "
-                    f"msl={rp.get('min_samples_leaf')}")
-
-        print(f"{r['algorithm_name']:<22} {r['split_label']:<8} {rf_str:<30} "
-            f"{m['f1_score']*100:6.2f} "
-            f"{m['mrr']*100:6.2f} "
-            f"{m['avg_time_taken']:7.2f}")
-
-    print("=" * len(header))
-
 def main():
     print("="*60)
     print("CBR ALGORITHM TESTING SUITE")
@@ -403,8 +376,7 @@ def main():
 
     cursor.close()
     conn.close()
-
-    print_comparison_table(all_results)
+    
     print("\n✓ All results saved to algorithm_test_results table.")
 
 if __name__ == '__main__':

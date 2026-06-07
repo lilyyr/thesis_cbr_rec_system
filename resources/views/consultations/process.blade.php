@@ -19,37 +19,19 @@ const consultationId = {{ $consultationId }};
 
 // ── Feature names (34D) ────────────────────────────────────────────────────
 const FEATURE_NAMES = [
-    // Demographics (5)
     'Age (normalized)',
     'Gender (encoded)',
     'Marital Status (encoded)',
-    'Income (normalized)',
-    'Dependents (normalized)',
-    // Health (3)
-    'BMI (normalized)',
-    'Health Risk (normalized)',
     'Occupation Risk (normalized)',
-    // Insurance (5)
+    'Dependents (normalized)',
+    'BMI (normalized)',
     'Insurance Period (normalized)',
-    'Premium Payment Period (normalized)',
-    'Overseas Medical Plans',
-    'Existing Health Insurance',
-    'High Risk Hobby',
-    // Financial (2)
-    'Premium Budget (normalized)',
+    'Health Risk (normalized)',
+    'Overseas (encoded)',
+    'Existing Health Insurance (encoded)',
+    'High Risk Hobby (encoded)',
+    'Nominal Received (normalized)',
     'Beneficiary Relationship (encoded)',
-    // Goals (8)
-    'Goal: Family Protection',
-    'Goal: Health',
-    'Goal: Retirement',
-    'Goal: Education',
-    'Goal: Critical Illness',
-    'Goal: Income Replacement',
-    'Goal: Savings',
-    'Goal: Wealth Accumulation',
-    // Regional Coverage (11)
-    'Coverage Breadth',
-    'Premium Coverage',
     'Region: Asia (exc HKG/SG/JPN)',
     'Region: HKG / SG / JPN',
     'Region: Europe',
@@ -57,10 +39,19 @@ const FEATURE_NAMES = [
     'Region: South America',
     'Region: Africa',
     'Region: Oceania',
-    'Region: Antarctica'
+    'Goal: Life',
+    'Goal: Health',
+    'Goal: Retirement',
+    'Goal: Education',
+    'Goal: Critical Illness',
+    'Goal: Income Protection',
+    'Goal: Savings',
+    'Goal: Accidents',
+    'Holder Income (normalized)',
+    'Holder Relationship (encoded)',
+
 ];
 
-// ── Helpers ────────────────────────────────────────────────────────────────
 function fmt(v, d = 4) {
     return (v == null ? 'N/A' : parseFloat(v).toFixed(d));
 }
@@ -70,7 +61,6 @@ function parseField(raw) {
     try { return JSON.parse(raw); } catch { return raw; }
 }
 
-// ── Main load ─────────────────────────────────────────────────────────────
 async function loadProcess() {
     try {
         const res  = await fetch(`/api/recommendations/${consultationId}`, {
@@ -88,7 +78,6 @@ async function loadProcess() {
     }
 }
 
-// ── Master render ──────────────────────────────────────────────────────────
 function renderProcess(data) {
     document.getElementById('loading').classList.add('hidden');
 
@@ -133,7 +122,7 @@ function renderProcess(data) {
     document.getElementById('process-content').classList.remove('hidden');
 }
 
-// ── Section 0: Header ─────────────────────────────────────────────────────
+// Header
 function renderHeader(data) {
     return `
     <div class="mb-2 flex justify-between items-center">
@@ -150,7 +139,7 @@ function renderHeader(data) {
     </div>`;
 }
 
-// ── Section 1: Overview banner ─────────────────────────────────────────────
+// Overview banner
 function renderOverview(data, eScore, wScore, rScore, eucTop, weucTop, rfTop) {
     const best = (arr) => arr[0]?.product_name ?? 'N/A';
     return `
@@ -171,7 +160,7 @@ function renderOverview(data, eScore, wScore, rScore, eucTop, weucTop, rfTop) {
     </div>`;
 }
 
-// ── Section 2: Feature vector ──────────────────────────────────────────────
+// Feature vector
 function renderFeatureVector(fv) {
     const arr  = Array.isArray(fv) ? fv : [];
     const dims = arr.length;
@@ -195,14 +184,14 @@ function renderFeatureVector(fv) {
     </div>`;
 }
 
-// ── Section 3: Euclidean ──────────────────────────────────────────────────
+// euclidean
 function renderEuclidean(euc, eucTop, fv) {
     const newVec  = Array.isArray(fv) ? fv : [];
     const best    = eucTop[0] ?? null;
     const histVec = best?.historical_vector ?? [];
     const diffs   = best?.feature_differences ?? [];
 
-    // Top-5 cards
+    // top 5
     const top5 = eucTop.map((c, i) => `
         <div class="flex justify-between items-center p-4 border border-gray-200 rounded hover:border-yellow-500 transition">
             <div>
@@ -215,7 +204,7 @@ function renderEuclidean(euc, eucTop, fv) {
             </div>
         </div>`).join('');
 
-    // Calculation table
+    // calculation logic table
     const tableRows = FEATURE_NAMES.map((name, i) => `
         <tr class="${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
             <td class="px-3 py-2 text-xs text-gray-700">${name}</td>
@@ -295,7 +284,7 @@ function renderEuclidean(euc, eucTop, fv) {
     </div>`;
 }
 
-// ── Section 4: Weighted Euclidean ─────────────────────────────────────────
+// weighted euclidean
 function renderWeightedEuclidean(weuc, weucTop, fv) {
     const newVec  = Array.isArray(fv) ? fv : [];
     const best    = weucTop[0] ?? null;
@@ -303,19 +292,16 @@ function renderWeightedEuclidean(weuc, weucTop, fv) {
     const wDiffs  = best?.weighted_differences ?? [];
     const weights = weuc.weights_used ?? best?.weights_used ?? [];
 
-    // weight bars
+    // weight cards
     const weightBars = weights.map(w => `
         <div class="bg-gray-50 border border-gray-200 p-3 rounded">
             <div class="flex justify-between items-center mb-1">
                 <span class="text-xs text-gray-700">${w.feature}</span>
                 <span class="font-mono font-bold text-yellow-600 text-xs">${fmt(w.weight, 4)}</span>
             </div>
-            <div class="h-1.5 bg-gray-200 rounded-full">
-                <div class="h-1.5 bg-yellow-500 rounded-full" style="width:${Math.min(w.weight * 100, 100)}%"></div>
-            </div>
         </div>`).join('');
 
-    // top-5 cards
+    // top 5
     const top5 = weucTop.map((c, i) => `
         <div class="flex justify-between items-center p-4 border border-gray-200 rounded hover:border-yellow-500 transition">
             <div>
@@ -328,7 +314,7 @@ function renderWeightedEuclidean(weuc, weucTop, fv) {
             </div>
         </div>`).join('');
 
-    // calculation table
+    // calculation logic table
     const tableRows = FEATURE_NAMES.map((name, i) => {
         const xi  = newVec[i];
         const yi  = histVec[i];
@@ -421,13 +407,13 @@ function renderWeightedEuclidean(weuc, weucTop, fv) {
     </div>`;
 }
 
-// ── Section 5: Random Forest ──────────────────────────────────────────────
+// random forest
 function renderRandomForest(rf, rfTop) {
     const best       = rfTop[0] ?? null;
     const treeMatches = best?.tree_by_tree_matches ?? [];
     const first10    = treeMatches.slice(0, 10);
 
-    // top-5 cards
+    // top 5
     const top5 = rfTop.map((c, i) => `
         <div class="flex justify-between items-center p-4 border border-gray-200 rounded hover:border-yellow-500 transition">
             <div>
@@ -440,20 +426,7 @@ function renderRandomForest(rf, rfTop) {
             </div>
         </div>`).join('');
 
-    // leaf grid (first 10)
-    const leafGrid = treeMatches.map(t => `
-        <div class="relative group w-full aspect-square flex items-center justify-center rounded font-bold text-white text-xs cursor-default
-             ${t.match ? 'bg-green-500' : 'bg-red-500'}">
-            ${t.match ? '✓' : '✗'}
-            <div class="absolute hidden group-hover:block bg-black text-white text-xs p-2 rounded shadow-lg z-10 w-32 -left-12 top-full mt-1 leading-relaxed">
-                Tree ${t.tree_id}<br>
-                New: Leaf ${t.new_leaf}<br>
-                Hist: Leaf ${t.hist_leaf}<br>
-                <span class="${t.match ? 'text-green-400' : 'text-red-400'}">${t.match ? 'MATCH ✓' : 'DIFFERENT ✗'}</span>
-            </div>
-        </div>`).join('');
-
-    // first-10 comparison rows
+    // first 10 leaves
     const compRows = first10.map(t => `
         <div class="flex items-center justify-between p-4 border rounded
              ${t.match ? 'border-green-400 bg-green-50' : 'border-red-300 bg-red-50'}">
@@ -493,7 +466,7 @@ function renderRandomForest(rf, rfTop) {
                 <li>The RF model contains <strong>${best?.total_trees ?? 100}</strong> decision trees.</li>
                 <li>Each case is passed through all trees; each tree assigns it to a leaf node.</li>
                 <li>We compare leaf node IDs between the new case and each historical case.</li>
-                <li>The more trees where both cases land in the <em>same</em> leaf, the more similar they are.</li>
+                <li>The more trees where both cases land in the same leaf, the more similar they are.</li>
             </ol>
         </div>
 
@@ -510,25 +483,6 @@ function renderRandomForest(rf, rfTop) {
                 Leaf-node comparison — Best match: Case #${best.case_id}
                 <span class="text-yellow-600">(${best.product_name})</span>
             </h3>
-            <p class="text-xs text-gray-500 mb-4">
-                Hover each cell to see which leaf each tree assigned. ✓ = same leaf, ✗ = different leaf.
-                Showing first ${treeMatches.length} trees.
-            </p>
-
-            <!-- Color grid -->
-            <div class="grid grid-cols-10 gap-2 mb-4">${leafGrid}</div>
-
-            <!-- Legend -->
-            <div class="flex items-center gap-6 mb-6 text-sm">
-                <div class="flex items-center gap-2">
-                    <div class="w-5 h-5 bg-green-500 rounded"></div>
-                    <span class="text-gray-700">Matching leaf: <strong>${best.matches}</strong> trees</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <div class="w-5 h-5 bg-red-500 rounded"></div>
-                    <span class="text-gray-700">Different leaf: <strong>${best.total_trees - best.matches}</strong> trees</span>
-                </div>
-            </div>
 
             <!-- First 10 detailed -->
             <h4 class="font-bold text-gray-900 mb-3">First 10 trees — detailed view</h4>
@@ -548,7 +502,7 @@ function renderRandomForest(rf, rfTop) {
 
         <!-- Tree visualization -->
         <div>
-            <h3 class="font-bold text-gray-900 mb-4">🌳 Decision Tree Visualizations</h3>
+            <h3 class="font-bold text-gray-900 mb-4">Decision Tree Visualizations</h3>
             <button onclick="generateTrees()"
                     id="generate-trees-btn"
                     class="bg-gradient-to-r from-yellow-600 to-yellow-500 text-white px-6 py-3 rounded hover:from-yellow-700 hover:to-yellow-600">
@@ -570,7 +524,7 @@ function renderRandomForest(rf, rfTop) {
     </div>`;
 }
 
-// ── Section 6: Final aggregation ──────────────────────────────────────────
+// aggregation
 function renderAggregation(eScore, wScore, rScore, avg, data) {
     return `
     <div class="bg-black text-white p-8 rounded-lg">

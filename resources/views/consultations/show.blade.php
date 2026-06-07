@@ -4,13 +4,11 @@
 
 @section('content')
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Loading state -->
         <div id="loading" class="text-center py-12">
             <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-600"></div>
             <p class="mt-4 text-gray-600">Loading consultation details...</p>
         </div>
 
-        <!-- Error state -->
         <div id="error-state" class="hidden text-center py-12 bg-red-50 border border-red-200 rounded">
             <p class="text-red-600 text-lg font-semibold">Error loading consultation</p>
             <p id="error-message" class="text-red-500 mt-2"></p>
@@ -19,7 +17,7 @@
             </a>
         </div>
 
-        <!-- Consultation details (populated by JavaScript) -->
+        <!-- Consultation details -->
         <div id="consultation-details" class="hidden space-y-6"></div>
     </div>
 
@@ -77,7 +75,6 @@
                 (parseFloat(consultation.euclidean_score) + parseFloat(consultation.weighted_euclidean_score) + parseFloat(consultation.random_forest_score)) / 3 * 100
             );
 
-            // Format financial goals
             const goalLabels = {
                 'life': 'Life Protection',
                 'health': 'Health Coverage',
@@ -93,7 +90,6 @@
                 ? consultation.financial_goals.map(g => goalLabels[g] || g).join(', ')
                 : 'N/A';
 
-            // Format income range
             const incomeLabels = {
                 'below_50m': 'Below Rp 50 Million',
                 '50m_100m': 'Rp 50M - 100M',
@@ -103,7 +99,6 @@
                 'above_1b': 'Above Rp 1 Billion'
             };
 
-            // Format dates
             const formatDate = (dateStr) => {
                 if (!dateStr) return 'N/A';
                 return new Date(dateStr).toLocaleDateString('en-US', {
@@ -113,7 +108,7 @@
                 });
             };
 
-            // BMI Category
+            // BMI
             const getBMICategory = (bmi) => {
                 if (bmi < 18.5) return { text: 'Underweight', color: 'text-blue-600' };
                 if (bmi < 25) return { text: 'Normal', color: 'text-green-600' };
@@ -123,7 +118,6 @@
 
             const bmiCategory = getBMICategory(consultation.bmi);
 
-            // First, build the HTML for the list of all recommendations
             const recommendationsListHtml = consultation.all_recommendations.filter(rec => rec.rank >= 2 && rec.rank <= 5).map(rec => {
                 return `
                 <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-6 hover:shadow-md transition">
@@ -154,10 +148,8 @@
                     </div>
                 </div>
             `;
-            }).join(''); // .join('') turns the array of strings into one single HTML string
+            }).join('');
 
-
-            // Now, build the main page and inject the list at the bottom
             document.getElementById('consultation-details').innerHTML = `
                     <div class="flex justify-between items-center mb-8">
                         <h1 class="text-4xl font-bold text-gray-900">Consultation Details</h1>
@@ -251,7 +243,7 @@
                     </div>
                 </div>
 
-                <!--Beneficiary Information-- >
+                <!--Beneficiary Information-->
                 <div class="bg-white border border-gray-200 p-6 rounded-lg">
                     <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-yellow-600">Beneficiary Information</h2>
 
@@ -278,7 +270,7 @@
                     </div>
                 </div>
 
-                <!--Insurance Details-- >
+                <!--Insurance Details-->
                 <div class="bg-white border border-gray-200 p-6 rounded-lg">
                     <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-yellow-600">Insurance Details</h2>
 
@@ -315,7 +307,7 @@
                     </div>
                 </div>
 
-                <!--Regional Coverage Display-- >
+                <!--Regional Coverage Display-->
                     ${consultation.overseas_medical_plans ? `
             <div class="bg-white border border-gray-200 p-6 rounded-lg">
                 <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-yellow-600">
@@ -355,7 +347,7 @@
             </div>
         `}
 
-                < !--Health Information-- >
+                <!--Health Information-->
                 <div class="bg-white border border-gray-200 p-6 rounded-lg">
                     <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-yellow-600">Health Information</h2>
 
@@ -444,7 +436,7 @@
                     </div>
                 </div>
 
-                <!--Agent Information-- >
+                <!--Agent Information-->
                 <div class="bg-white border border-gray-200 p-6 rounded-lg">
                     <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-yellow-600">Consultation Details</h2>
 
@@ -466,17 +458,12 @@
                     </div>
                 </div>
 
-                <!--Action Buttons-- >
+                <!--Action Buttons-->
                     <div class="flex gap-4">
                         <a href="/consultations/${consultation.id}/process"
                             class="bg-black text-white px-6 py-3 rounded hover:bg-gray-800 transition">
                             View CBR Process Visualization →
                         </a>
-
-                        <button onclick="window.print()"
-                            class="bg-white border-2 border-gray-300 text-gray-700 px-6 py-3 rounded hover:bg-gray-50 transition">
-                            Print Report
-                        </button>
                     </div>
             `;
 

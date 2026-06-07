@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    
+
     <!-- Hero Section -->
     <div class="text-center py-20">
         <div class="inline-block mb-6">
@@ -84,7 +84,7 @@
         <p class="text-gray-600 text-lg mb-12 max-w-2xl mx-auto">
             The driving force behind Marvel Agency's commitment to growth, integrity, and building a lasting legacy.
         </p>
-        
+
         <div class="grid md:grid-cols-2 gap-12">
             <!-- Owner 1 -->
             <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-gold-500 transition duration-300">
@@ -92,7 +92,7 @@
                     <!-- Replace with actual image -->
                     <img src="{{ asset('images/man.png') }}" alt="Mimi" class="w-full h-full object-cover text-gray-400" onerror="this.outerHTML='<span class=\'text-4xl\'>👩🏻</span>'">
                 </div>
-                <h3 class="text-2xl font-bold text-gray-900 mb-1">Mimi</h3>
+                <h3 class="text-2xl font-bold text-gray-900 mb-1">Yessup H Wikarsa</h3>
                 <p class="text-gold-500 font-semibold mb-4 uppercase tracking-wide text-sm">Founder & Business Partner</p>
                 <p class="text-gray-600 italic leading-relaxed">
                     "I believe in being the 'glue' that binds our team together. My passion is building people up so they can protect families and achieve a better life."
@@ -105,7 +105,7 @@
                     <!-- Replace with actual image -->
                     <img src="{{ asset('images/woman.jpeg') }}" alt="Second Owner" class="w-full h-full object-cover text-gray-400" onerror="this.outerHTML='<span class=\'text-4xl\'>👨🏻</span>'">
                 </div>
-                <h3 class="text-2xl font-bold text-gray-900 mb-1">[Owner Name]</h3>
+                <h3 class="text-2xl font-bold text-gray-900 mb-1">Mimi Joemana</h3>
                 <p class="text-gold-500 font-semibold mb-4 uppercase tracking-wide text-sm">Founder & Business Partner</p>
                 <p class="text-gray-600 italic leading-relaxed">
                     "Committed to fostering a culture of continuous learning and developing systems where every partner can duplicate success and reach their highest potential."
@@ -114,24 +114,23 @@
         </div>
     </div>
 
-    <!-- Vision & Strong Closing -->
+    <!-- Vision -->
     <div class="bg-black text-white p-12 rounded-xl mb-20 relative overflow-hidden shadow-xl">
-        <!-- Decorative Gold Accent -->
         <div class="absolute top-0 left-0 w-2 h-full bg-gold-500"></div>
-        
+
         <div class="max-w-3xl mx-auto text-center">
             <h2 class="text-gold-500 text-sm font-bold uppercase tracking-widest mb-2">Our Vision</h2>
             <p class="text-xl md:text-2xl font-light leading-relaxed mb-12">
                 "To be an agency that births Business Partners who grow, succeed in sales, excel in team building, and create a positive impact on countless families."
             </p>
-            
+
             <hr class="border-gray-800 mb-12">
-            
+
             <blockquote class="text-2xl md:text-3xl font-serif italic text-white leading-snug">
                 "Marvel Agency is not just a place to sell insurance.<br>
                 <span class="text-gold-500 font-bold not-italic mt-4 block text-xl md:text-2xl">
                     It is a place to grow, learn to lead, build teams, and create a better future together.
-                </span>"
+                </span>
             </blockquote>
         </div>
     </div>

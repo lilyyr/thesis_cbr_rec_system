@@ -153,8 +153,7 @@
     <footer class="bg-black border-t border-gray-800 mt-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div class="flex justify-between items-center">
-                <p class="text-gray-400 text-sm">© 2026 Insurance CBR System. All rights reserved.</p>
-                <p class="text-gray-500 text-xs">Powered by AI & Machine Learning</p>
+                <p class="text-gray-400 text-sm">© 2026 Marvel Agency. All rights reserved.</p>
             </div>
         </div>
     </footer>

@@ -10,10 +10,10 @@
     </div>
 
     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <h3 class="font-semibold text-blue-900 mb-2">ℹ️ How Feature Weights Work</h3>
+        <h3 class="font-semibold text-blue-900 mb-2">Feature Weights</h3>
         <p class="text-sm text-blue-800">
             Feature weights determine the importance of each customer attribute when calculating similarity.
-            Higher weights (closer to 1.0) make that feature more influential in recommendations.
+            Higher weights (closer to 1.0) make the feature more important when the system uses it to make recommendations.
             All weights should sum to approximately 1.0 for best results.
         </p>
     </div>

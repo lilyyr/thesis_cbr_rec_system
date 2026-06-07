@@ -9,7 +9,6 @@ def load_training_data():
     cases = load_historical_cases()
     print(f"Loaded {len(cases)} training cases")
 
-    # Parse JSON feature vectors
     X = []
     y = []
     case_ids = []
@@ -27,18 +26,15 @@ def train_model(X, y):
     print(f"  Samples: {X.shape[0]}")
     print(f"  Classes: {len(np.unique(y))} products")
 
-    # Train model
     rf = RandomForestClassifier(
-        n_estimators=100,
+        n_estimators=200,
         max_depth=5,
         max_features=None,
         min_samples_leaf=1,
         random_state=42,
-        n_jobs=-1 #this determines speed, -1 means uses all my computer's cores so rf commands runs faster, can tweak this to compare speeds
     )
 
     rf.fit(X, y)
-
     print("Training complete!")
     return rf
 
@@ -48,10 +44,9 @@ def generate_leaf_cache(rf, X, case_ids):
 
     print(f"Generated leaf assignments: {leaf_assignments.shape}")
 
-    # CREATE DICTIONARY KEYED BY CASE_ID
     leaf_dict = {}
     for i, case_id in enumerate(case_ids):
-        leaf_dict[str(case_id)] = leaf_assignments[i].tolist()  # Convert to string for JSON
+        leaf_dict[str(case_id)] = leaf_assignments[i].tolist()
 
     return leaf_dict
 
@@ -59,16 +54,14 @@ def save_model(rf, leaf_cache):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     models_dir = os.path.join(script_dir, 'models')
 
-    # Create models directory if not exists
     if not os.path.exists(models_dir):
         os.makedirs(models_dir)
 
-    # Save model
+    # Saving model and leaves
     model_path = os.path.join(models_dir, 'rf_model.pkl')
     joblib.dump(rf, model_path)
     print(f"Model saved to: {model_path}")
 
-    # Save leaf cache
     cache_path = os.path.join(models_dir, 'leaf_cache.json')
     cache_data = {
         'leaf_assignments': leaf_cache,

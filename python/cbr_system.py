@@ -164,7 +164,6 @@ def preprocess_case(data: Dict) -> Dict:
     holder_relationship_encoded = holder_relationship_map.get(holder_relationship, 0.2)
 
     #30D
-    #bmi, nominal
     feature_vector = [
         age_norm, gender_encoded, marital_encoded, occupation_risk_norm,
         dependents_norm, float(bmi_norm), ins_period_norm, health_risk_norm,
